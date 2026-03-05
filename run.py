@@ -130,6 +130,38 @@ def pick_cards(deck_size: int) -> int | None:
         print(f"  {RED}Invalid — enter 1 to 5.{RESET}")
 
 
+def pick_copies() -> int:
+    section("Copies Per Card")
+    print(f"  {DIM}How many copies of each card to load onto the input stack.{RESET}")
+    print(f"  {DIM}e.g. 3x = each of the {len(__import__('main').SAMPLE_DECK)} unique cards appears 3 times.{RESET}")
+    presets = [
+        ("1",  "1 copy   (unique collection)  ", ""),
+        ("2",  "2 copies                       ", "doubles every cell stack"),
+        ("3",  "3 copies                       ", ""),
+        ("5",  "5 copies                       ", "stress test"),
+        ("c",  "Custom number                  ", ""),
+    ]
+    for i, (key, label, detail) in enumerate(presets, 1):
+        marker = f"{GREEN}*{RESET}" if key == "1" else " "
+        print(f"  {marker} {BOLD}{i}{RESET}  {label}  {DIM}{detail}{RESET}")
+    while True:
+        raw = prompt("Choose 1–5", "1")
+        if raw == "1": return 1
+        if raw == "2": return 2
+        if raw == "3": return 3
+        if raw == "4": return 5
+        if raw == "5" or raw.lower() == "c":
+            while True:
+                try:
+                    n = int(prompt("  How many copies (1–99)", "1"))
+                    if 1 <= n <= 99:
+                        return n
+                    print(f"  {RED}Must be between 1 and 99.{RESET}")
+                except ValueError:
+                    print(f"  {RED}Enter a whole number.{RESET}")
+        print(f"  {RED}Invalid — enter 1 to 5.{RESET}")
+
+
 def confirm_and_run(args: list[str]) -> None:
     # Split any "  --flag value" strings into separate tokens for subprocess
     tokens: list[str] = []
@@ -159,6 +191,7 @@ def show_help():
     rows = [
         ("--grid ROWSxCOLS",    "Grid dimensions",      "e.g.  --grid 4x4  or  --grid 6x6"),
         ("--strategy NAME",     "Sorting strategy",     "by_rarity_and_set | by_rarity | by_set | by_price"),
+        ("--copies N",          "Copies per card",      "e.g.  --copies 3  stacks each cell with 3 cards"),
         ("--cards N",           "Limit card count",     "e.g.  --cards 10"),
         ("--no-viz",            "Headless mode",        "skip matplotlib, print to terminal only"),
         ("--log FILE.json",     "Export event log",     "saves pick/drop events as JSON"),
@@ -240,7 +273,8 @@ def main_menu():
         # Import deck here just to get its size for the prompt
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from main import SAMPLE_DECK
-        max_cards = pick_cards(len(SAMPLE_DECK))
+        copies = pick_copies()
+        max_cards = pick_cards(len(SAMPLE_DECK) * copies)
 
         viz_choice = pick(
             "Visualization",
@@ -270,6 +304,8 @@ def main_menu():
         )
 
         args = [f"--grid {rows}x{cols}", f"--strategy {strategy}"]
+        if copies > 1:
+            args.append(f"--copies {copies}")
         if max_cards:
             args.append(f"--cards {max_cards}")
         if viz_choice == "no":
@@ -286,8 +322,11 @@ def main_menu():
         rows, cols = pick_grid()
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from main import SAMPLE_DECK
-        max_cards = pick_cards(len(SAMPLE_DECK))
+        copies = pick_copies()
+        max_cards = pick_cards(len(SAMPLE_DECK) * copies)
         args = ["--no-viz", f"--grid {rows}x{cols}"]
+        if copies > 1:
+            args.append(f"--copies {copies}")
         if max_cards:
             args.append(f"--cards {max_cards}")
         confirm_and_run(args)

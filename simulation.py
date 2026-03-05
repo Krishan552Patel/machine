@@ -175,6 +175,7 @@ class Simulation:
                 if self._visualizer:
                     self._visualizer.update(event)
                 processed += 1
+                self._print_grid_snapshot()
             except Exception as exc:
                 msg = f"Error on card #{processed + 1}: {exc}"
                 self._errors.append(msg)
@@ -255,18 +256,34 @@ class Simulation:
         stack_y: float,
         card: CardData,
     ) -> list[MoveRecord]:
-        """
-        Move to stack, lower Z (pick up), raise Z.
-
-        Prints a PICK event line.
-        """
+        """Move to stack, lower Z (pick up), raise Z. Prints CoreXY gantry trace."""
         moves: list[MoveRecord] = []
 
+        # Capture motor positions before XY move
+        a_before = self.gantry.motor_a.get_step_count()
+        b_before = self.gantry.motor_b.get_step_count()
+
         # Move XY to above the stack
-        moves.append(self.gantry.move_xy(stack_x, stack_y))
+        rec_xy = self.gantry.move_xy(stack_x, stack_y)
+        moves.append(rec_xy)
+
+        a_delta = self.gantry.motor_a.get_step_count() - a_before
+        b_delta = self.gantry.motor_b.get_step_count() - b_before
+        t = self.gantry.get_simulated_time()
+        x, y, _ = self.gantry.get_position()
+        if rec_xy.distance_mm > 1e-3:
+            print(
+                f"[t={t:>7.3f}s] XY    "
+                f"X:{x:>6.1f}mm  Y:{y:>6.1f}mm  "
+                f"dist:{rec_xy.distance_mm:.1f}mm  "
+                f"A:{a_delta:+d}  B:{b_delta:+d} steps"
+            )
 
         # Lower Z to pick height
-        moves.append(self.gantry.move_z(config.Z_TRAVEL_MM))
+        rec_z_down = self.gantry.move_z(config.Z_TRAVEL_MM)
+        moves.append(rec_z_down)
+        t = self.gantry.get_simulated_time()
+        print(f"[t={t:>7.3f}s] Z-DN  Z:{config.Z_TRAVEL_MM:.1f}mm  (approaching card)")
 
         # --- PICK event ---
         t = self.gantry.get_simulated_time()
@@ -274,12 +291,15 @@ class Simulation:
         print(
             f"[t={t:>7.3f}s] PICK  {card.card_id:<8} "
             f"\"{card.name}\" [{card.rarity_name}]  "
-            f"@ ({x:.1f}, {y:.1f})mm  "
-            f"stack={self.stack.remaining()} remaining"
+            f"@ ({x:.1f}, {y:.1f}, {z:.1f})mm  "
+            f"{self.stack.remaining()} left in input"
         )
 
         # Raise Z (card is now "held")
-        moves.append(self.gantry.move_z(0.0))
+        rec_z_up = self.gantry.move_z(0.0)
+        moves.append(rec_z_up)
+        t = self.gantry.get_simulated_time()
+        print(f"[t={t:>7.3f}s] Z-UP  Z:0.0mm   (card lifted, transiting)")
 
         return moves
 
@@ -289,18 +309,34 @@ class Simulation:
         cell_y: float,
         card: CardData,
     ) -> list[MoveRecord]:
-        """
-        Move to cell, lower Z (release card), raise Z.
-
-        Prints a DROP event line.
-        """
+        """Move to cell, lower Z (release card), raise Z. Prints CoreXY gantry trace."""
         moves: list[MoveRecord] = []
 
+        # Capture motor positions before XY move
+        a_before = self.gantry.motor_a.get_step_count()
+        b_before = self.gantry.motor_b.get_step_count()
+
         # Move XY to above the target cell
-        moves.append(self.gantry.move_xy(cell_x, cell_y))
+        rec_xy = self.gantry.move_xy(cell_x, cell_y)
+        moves.append(rec_xy)
+
+        a_delta = self.gantry.motor_a.get_step_count() - a_before
+        b_delta = self.gantry.motor_b.get_step_count() - b_before
+        t = self.gantry.get_simulated_time()
+        x, y, _ = self.gantry.get_position()
+        if rec_xy.distance_mm > 1e-3:
+            print(
+                f"[t={t:>7.3f}s] XY    "
+                f"X:{x:>6.1f}mm  Y:{y:>6.1f}mm  "
+                f"dist:{rec_xy.distance_mm:.1f}mm  "
+                f"A:{a_delta:+d}  B:{b_delta:+d} steps"
+            )
 
         # Lower Z to drop height
-        moves.append(self.gantry.move_z(config.Z_TRAVEL_MM))
+        rec_z_down = self.gantry.move_z(config.Z_TRAVEL_MM)
+        moves.append(rec_z_down)
+        t = self.gantry.get_simulated_time()
+        print(f"[t={t:>7.3f}s] Z-DN  Z:{config.Z_TRAVEL_MM:.1f}mm  (placing card)")
 
         # --- DROP event ---
         t = self.gantry.get_simulated_time()
@@ -308,14 +344,44 @@ class Simulation:
         print(
             f"[t={t:>7.3f}s] DROP  {card.card_id:<8} "
             f"\"{card.name}\" [{card.rarity_name}]  "
-            f"-> ({x:.1f}, {y:.1f})mm  "
+            f"-> ({x:.1f}, {y:.1f}, {z:.1f})mm  "
             f"${card.price_usd:.2f}"
         )
 
         # Raise Z (card released, head lifts clear)
-        moves.append(self.gantry.move_z(0.0))
+        rec_z_up = self.gantry.move_z(0.0)
+        moves.append(rec_z_up)
+        t = self.gantry.get_simulated_time()
+        print(f"[t={t:>7.3f}s] Z-UP  Z:0.0mm   (head clear)")
 
         return moves
+
+    def _print_grid_snapshot(self) -> None:
+        """Print a terminal table showing card stack count for every grid cell."""
+        snapshot = self.grid.get_grid_snapshot()
+        cols = self.grid.cols
+        cw = 13  # column width (chars)
+        div = "  +" + ("-" * cw + "+") * cols
+
+        print(f"\n  -- Grid Snapshot --")
+        print(div)
+        for row in snapshot:
+            line_label = "  |"
+            line_count = "  |"
+            for cell in row:
+                label = f" {cell.label}"
+                line_label += f"{label:<{cw}}|"
+                if cell.card_count == 0:
+                    count_str = " empty"
+                elif cell.card_count == 1:
+                    count_str = f" 1 card"
+                else:
+                    count_str = f" {cell.card_count} cards"
+                line_count += f"{count_str:<{cw}}|"
+            print(line_label)
+            print(line_count)
+            print(div)
+        print()
 
     # ------------------------------------------------------------------
     # Logging

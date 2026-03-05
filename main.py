@@ -108,8 +108,11 @@ def build_gantry() -> Gantry:
     return Gantry(motor_a, motor_b, motor_z, CoreXYKinematics())
 
 
-def build_stack(deck: list[dict]) -> InputStack:
-    cards = [CardData.from_dict(d) for d in deck]
+def build_stack(deck: list[dict], copies: int = 1) -> InputStack:
+    cards = []
+    for d in deck:
+        for _ in range(copies):
+            cards.append(CardData.from_dict(d))
     stack = InputStack()
     # Load bottom to top (last in list = top of stack = first sorted)
     stack.load_from_list(cards)
@@ -169,18 +172,22 @@ def main() -> None:
     parser.add_argument("--cards", type=int, default=None, help="Limit number of cards to sort")
     parser.add_argument("--log", default=None, help="Export event log to JSON file")
     parser.add_argument("--cnn-hook", action="store_true", help="Enable demo CNN hook")
+    parser.add_argument("--copies", type=int, default=1, help="Number of copies of each card in the deck (stacks cells)")
     args = parser.parse_args()
 
     rows, cols = parse_grid_arg(args.grid)
 
+    copies = max(1, args.copies)
+    total_cards = len(SAMPLE_DECK) * copies
+
     print(f"\n  FaB Card Sorter Simulation")
     print(f"  Grid: {rows}x{cols}  |  Strategy: {args.strategy}")
-    print(f"  Cards in deck: {len(SAMPLE_DECK)}")
+    print(f"  Unique cards: {len(SAMPLE_DECK)}  |  Copies: {copies}x  |  Total: {total_cards}")
 
     # --- Build components ---
     gantry = build_gantry()
     grid = CardGrid(rows=rows, cols=cols)
-    stack = build_stack(SAMPLE_DECK)
+    stack = build_stack(SAMPLE_DECK, copies=copies)
     sorter = FaBRuleBasedSorter(strategy=args.strategy)
 
     sim = Simulation(
