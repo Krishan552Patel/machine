@@ -131,15 +131,23 @@ def pick_cards(deck_size: int) -> int | None:
 
 
 def confirm_and_run(args: list[str]) -> None:
+    # Split any "  --flag value" strings into separate tokens for subprocess
+    tokens: list[str] = []
+    for a in args:
+        tokens.extend(a.split())
+
     header()
     section("Ready to Run")
-    cmd = "python main.py " + " ".join(args)
+    cmd = "python main.py " + " ".join(tokens)
     print(f"\n  Command:  {BOLD}{CYAN}{cmd}{RESET}\n")
     go = prompt("Press Enter to start, or type 'back' to change options", "go")
     if go.lower() == "back":
         return main_menu()
     print()
-    subprocess.run([sys.executable, "main.py"] + args, cwd=os.path.dirname(os.path.abspath(__file__)))
+    subprocess.run(
+        [sys.executable, "main.py"] + tokens,
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+    )
     print(f"\n  {DIM}Press Enter to return to the menu...{RESET}")
     input()
     main_menu()
