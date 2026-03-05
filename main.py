@@ -28,26 +28,54 @@ from visualizer import Visualizer
 # ---------------------------------------------------------------------------
 
 SAMPLE_DECK: list[dict] = [
-    # Fabled / Legendary
-    {"card_id": "WTR001", "name": "Dorinthea Ironsong",     "set_code": "WTR", "rarity": "L", "hero_class": "warrior",  "price_usd": 48.50},
-    {"card_id": "MON001", "name": "Prism, Sculptor of Arc", "set_code": "MON", "rarity": "F", "hero_class": "illusionist","price_usd": 120.00},
-    {"card_id": "ARC001", "name": "Ira, Crimson Haze",      "set_code": "ARC", "rarity": "L", "hero_class": "ninja",     "price_usd": 35.00},
-    {"card_id": "EVO001", "name": "Bravo, Star of the Show","set_code": "EVO", "rarity": "L", "hero_class": "guardian",  "price_usd": 22.00},
-    # Majestic / Super Rare
-    {"card_id": "WTR010", "name": "Enlightened Strike",     "set_code": "WTR", "rarity": "M", "hero_class": "generic",  "price_usd": 8.75},
-    {"card_id": "MON010", "name": "Codex of Frailty",       "set_code": "MON", "rarity": "M", "hero_class": "wizard",   "price_usd": 14.00},
-    {"card_id": "ARC010", "name": "Mage Master Boots",      "set_code": "ARC", "rarity": "S", "hero_class": "generic",  "price_usd": 6.50},
-    {"card_id": "CRU001", "name": "Cash In",                "set_code": "CRU", "rarity": "M", "hero_class": "merchant", "price_usd": 11.00},
-    # Rare
-    {"card_id": "WTR020", "name": "Dawnblade",              "set_code": "WTR", "rarity": "R", "hero_class": "warrior",  "price_usd": 3.50},
-    {"card_id": "MON020", "name": "Spectral Shield",        "set_code": "MON", "rarity": "R", "hero_class": "illusionist","price_usd": 2.00},
-    {"card_id": "ARC020", "name": "Harmonized Kodachi",     "set_code": "ARC", "rarity": "R", "hero_class": "ninja",    "price_usd": 4.25},
-    {"card_id": "EVO010", "name": "Courage of Bladehold",   "set_code": "EVO", "rarity": "R", "hero_class": "generic",  "price_usd": 1.80},
-    # Common / Token
-    {"card_id": "WTR050", "name": "Warrior's Valor",        "set_code": "WTR", "rarity": "C", "hero_class": "warrior",  "price_usd": 0.25},
-    {"card_id": "MON050", "name": "Fog of War",             "set_code": "MON", "rarity": "C", "hero_class": "generic",  "price_usd": 0.10},
-    {"card_id": "ARC050", "name": "Surging Strike",         "set_code": "ARC", "rarity": "C", "hero_class": "ninja",    "price_usd": 0.15},
-    {"card_id": "WTR099", "name": "Ponder Token",           "set_code": "WTR", "rarity": "T", "hero_class": "generic",  "price_usd": 0.05},
+    # ── Fabled ──────────────────────────────────────────────────────────────
+    {"card_id": "MON001", "name": "Prism, Sculptor of Arc",   "set_code": "MON", "rarity": "F", "hero_class": "illusionist", "price_usd": 120.00},
+    {"card_id": "EVO002", "name": "Blasmophet, Levia Consumed","set_code": "EVO", "rarity": "F", "hero_class": "shapeshifter","price_usd": 95.00},
+    # ── Legendary ───────────────────────────────────────────────────────────
+    {"card_id": "WTR001", "name": "Dorinthea Ironsong",        "set_code": "WTR", "rarity": "L", "hero_class": "warrior",    "price_usd": 48.50},
+    {"card_id": "ARC001", "name": "Ira, Crimson Haze",         "set_code": "ARC", "rarity": "L", "hero_class": "ninja",      "price_usd": 35.00},
+    {"card_id": "EVO001", "name": "Bravo, Star of the Show",   "set_code": "EVO", "rarity": "L", "hero_class": "guardian",   "price_usd": 22.00},
+    {"card_id": "CRU002", "name": "Lexi, Livewire",            "set_code": "CRU", "rarity": "L", "hero_class": "ranger",     "price_usd": 18.00},
+    {"card_id": "DYN001", "name": "Nuu, Alluring Desire",      "set_code": "DYN", "rarity": "L", "hero_class": "ninja",      "price_usd": 28.00},
+    {"card_id": "UPR001", "name": "Fai, Rising Rebellion",     "set_code": "UPR", "rarity": "L", "hero_class": "ninja",      "price_usd": 32.00},
+    # ── Majestic ────────────────────────────────────────────────────────────
+    {"card_id": "WTR010", "name": "Enlightened Strike",        "set_code": "WTR", "rarity": "M", "hero_class": "generic",    "price_usd": 8.75},
+    {"card_id": "MON010", "name": "Codex of Frailty",          "set_code": "MON", "rarity": "M", "hero_class": "wizard",     "price_usd": 14.00},
+    {"card_id": "CRU003", "name": "Cash In",                   "set_code": "CRU", "rarity": "M", "hero_class": "merchant",   "price_usd": 11.00},
+    {"card_id": "DYN010", "name": "Erase Face",                "set_code": "DYN", "rarity": "M", "hero_class": "ninja",      "price_usd": 9.50},
+    {"card_id": "UPR010", "name": "Rising Resentment",         "set_code": "UPR", "rarity": "M", "hero_class": "ninja",      "price_usd": 7.25},
+    {"card_id": "HVY010", "name": "Apex of Explained Chaos",   "set_code": "HVY", "rarity": "M", "hero_class": "generic",    "price_usd": 12.00},
+    # ── Super Rare ──────────────────────────────────────────────────────────
+    {"card_id": "ARC010", "name": "Mage Master Boots",         "set_code": "ARC", "rarity": "S", "hero_class": "generic",    "price_usd": 6.50},
+    {"card_id": "MON015", "name": "Spectral Selves",           "set_code": "MON", "rarity": "S", "hero_class": "illusionist","price_usd": 5.00},
+    {"card_id": "EVO015", "name": "Electrify",                 "set_code": "EVO", "rarity": "S", "hero_class": "ranger",     "price_usd": 4.80},
+    # ── Rare ────────────────────────────────────────────────────────────────
+    {"card_id": "WTR020", "name": "Dawnblade",                 "set_code": "WTR", "rarity": "R", "hero_class": "warrior",    "price_usd": 3.50},
+    {"card_id": "MON020", "name": "Spectral Shield",           "set_code": "MON", "rarity": "R", "hero_class": "illusionist","price_usd": 2.00},
+    {"card_id": "ARC020", "name": "Harmonized Kodachi",        "set_code": "ARC", "rarity": "R", "hero_class": "ninja",      "price_usd": 4.25},
+    {"card_id": "EVO020", "name": "Courage of Bladehold",      "set_code": "EVO", "rarity": "R", "hero_class": "generic",    "price_usd": 1.80},
+    {"card_id": "CRU020", "name": "Parabolic Leap",            "set_code": "CRU", "rarity": "R", "hero_class": "generic",    "price_usd": 2.50},
+    {"card_id": "DYN020", "name": "Drone of Brutality",        "set_code": "DYN", "rarity": "R", "hero_class": "generic",    "price_usd": 1.60},
+    {"card_id": "UPR020", "name": "Fyendal's Spring Tunic",    "set_code": "UPR", "rarity": "R", "hero_class": "generic",    "price_usd": 3.80},
+    {"card_id": "HVY020", "name": "Tectonic Plating",          "set_code": "HVY", "rarity": "R", "hero_class": "brute",      "price_usd": 2.20},
+    {"card_id": "OUT020", "name": "Lava Burst",                "set_code": "OUT", "rarity": "R", "hero_class": "wizard",     "price_usd": 1.40},
+    # ── Common ──────────────────────────────────────────────────────────────
+    {"card_id": "WTR050", "name": "Warrior's Valor",           "set_code": "WTR", "rarity": "C", "hero_class": "warrior",    "price_usd": 0.25},
+    {"card_id": "MON050", "name": "Fog of War",                "set_code": "MON", "rarity": "C", "hero_class": "generic",    "price_usd": 0.10},
+    {"card_id": "ARC050", "name": "Surging Strike",            "set_code": "ARC", "rarity": "C", "hero_class": "ninja",      "price_usd": 0.15},
+    {"card_id": "CRU050", "name": "Razor Reflex",              "set_code": "CRU", "rarity": "C", "hero_class": "generic",    "price_usd": 0.08},
+    {"card_id": "EVO050", "name": "Sigil of Solace",           "set_code": "EVO", "rarity": "C", "hero_class": "generic",    "price_usd": 0.12},
+    {"card_id": "DYN050", "name": "Whelming Gustwave",         "set_code": "DYN", "rarity": "C", "hero_class": "generic",    "price_usd": 0.20},
+    {"card_id": "UPR050", "name": "Open the Floodgates",       "set_code": "UPR", "rarity": "C", "hero_class": "generic",    "price_usd": 0.09},
+    {"card_id": "HVY050", "name": "Pummel",                    "set_code": "HVY", "rarity": "C", "hero_class": "brute",      "price_usd": 0.07},
+    {"card_id": "OUT050", "name": "Aether Wildfire",           "set_code": "OUT", "rarity": "C", "hero_class": "wizard",     "price_usd": 0.18},
+    # ── Cold Foil ───────────────────────────────────────────────────────────
+    {"card_id": "WTR005", "name": "Crippling Crush (CF)",      "set_code": "WTR", "rarity": "CF","hero_class": "guardian",   "price_usd": 55.00},
+    {"card_id": "MON005", "name": "Aether Spindle (CF)",       "set_code": "MON", "rarity": "CF","hero_class": "illusionist","price_usd": 40.00},
+    # ── Token ───────────────────────────────────────────────────────────────
+    {"card_id": "WTR099", "name": "Ponder Token",              "set_code": "WTR", "rarity": "T", "hero_class": "generic",    "price_usd": 0.05},
+    {"card_id": "MON099", "name": "Illusionist Token",         "set_code": "MON", "rarity": "T", "hero_class": "illusionist","price_usd": 0.05},
+    {"card_id": "EVO099", "name": "Copper Token",              "set_code": "EVO", "rarity": "T", "hero_class": "generic",    "price_usd": 0.03},
 ]
 
 
