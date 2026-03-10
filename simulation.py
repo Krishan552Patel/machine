@@ -201,6 +201,7 @@ class Simulation:
             event_count_by_type=self._count_events(),
         )
         print(f"\n{report}")
+        self._print_final_bins()
         return report
 
     # ------------------------------------------------------------------
@@ -355,6 +356,35 @@ class Simulation:
         print(f"[t={t:>7.3f}s] Z-UP  Z:0.0mm   (head clear)")
 
         return moves
+
+    def _print_final_bins(self) -> None:
+        """Print a full summary of every occupied bin and the cards inside it."""
+        snapshot = self.grid.get_grid_snapshot()
+        occupied = [
+            cell
+            for row in snapshot
+            for cell in row
+            if not cell.is_empty
+        ]
+
+        print(f"\n{'='*52}")
+        print(f"  FINAL BIN CONTENTS  ({len(occupied)} bins occupied)")
+        print(f"{'='*52}")
+
+        for cell in occupied:
+            rarity_label = cell.occupant.rarity_name if cell.occupant else "?"
+            print(f"\n  Bin {cell.label}  —  {cell.card_count} card(s)  [{rarity_label} bin]")
+            print(f"  {'─'*46}")
+            for i, card in enumerate(cell.cards, start=1):
+                conf_str = f"  conf={card.confidence*100:.0f}%" if card.confidence < 1.0 else ""
+                print(
+                    f"    {i:>2}. {card.name:<30} "
+                    f"{card.set_code}  {card.rarity_name:<12}{conf_str}"
+                )
+
+        if not occupied:
+            print("  (no cards sorted)")
+        print(f"\n{'='*52}\n")
 
     def _print_grid_snapshot(self) -> None:
         """Print a terminal table showing card stack count for every grid cell."""

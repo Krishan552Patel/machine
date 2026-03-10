@@ -18,9 +18,11 @@ from card import CardData, InputStack
 from grid import CardGrid
 from gantry import Gantry, CoreXYKinematics
 from motor import StepperMotor
-from sorter import FaBRuleBasedSorter, CNNSorter
+from sorter import FaBRuleBasedSorter, CNNSorter, FabIdSorter
 from simulation import Simulation
 from visualizer import Visualizer
+from cnn_bridge import scan_folder_to_stack
+from fab_id_bridge import scan_folder_to_stack as fab_id_scan_folder_to_stack
 
 
 # ---------------------------------------------------------------------------
@@ -171,24 +173,59 @@ def main() -> None:
     parser.add_argument("--no-viz", action="store_true", help="Disable matplotlib visualization")
     parser.add_argument("--cards", type=int, default=None, help="Limit number of cards to sort")
     parser.add_argument("--log", default=None, help="Export event log to JSON file")
-    parser.add_argument("--cnn-hook", action="store_true", help="Enable demo CNN hook")
+    parser.add_argument("--cnn-hook", action="store_true", help="Enable demo CNN hook (sample deck only)")
     parser.add_argument("--copies", type=int, default=1, help="Number of copies of each card in the deck (stacks cells)")
+    parser.add_argument("--use-cnn", action="store_true", help="Identify cards from real photos using the ML model (requires --images-dir)")
+    parser.add_argument("--use-fab-id", action="store_true", help="Identify cards using fab-card-id pHash pipeline + Neon prices (requires --images-dir)")
+    parser.add_argument("--no-prices", action="store_true", help="Skip Neon price lookup when using --use-fab-id (offline mode)")
+    parser.add_argument("--images-dir", default=None, help="Folder of card photos (any filenames) for real CNN or fab-id identification")
+    parser.add_argument("--model-path", default="../card-recognition/model/checkpoints/best_model.pth", help="Path to trained model checkpoint")
     args = parser.parse_args()
 
     rows, cols = parse_grid_arg(args.grid)
 
-    copies = max(1, args.copies)
-    total_cards = len(SAMPLE_DECK) * copies
-
-    print(f"\n  FaB Card Sorter Simulation")
-    print(f"  Grid: {rows}x{cols}  |  Strategy: {args.strategy}")
-    print(f"  Unique cards: {len(SAMPLE_DECK)}  |  Copies: {copies}x  |  Total: {total_cards}")
+    # --- Build stack ---
+    if args.use_fab_id:
+        if not args.images_dir:
+            print("  [Error] --use-fab-id requires --images-dir <folder of card photos>")
+            sys.exit(1)
+        stack = fab_id_scan_folder_to_stack(
+            images_dir=args.images_dir,
+            use_prices=not args.no_prices,
+        )
+        if len(stack) == 0:
+            print("  [Error] No images found or identified. Check --images-dir path.")
+            sys.exit(1)
+        sorter = FabIdSorter()
+        print(f"  FaB Card Sorter Simulation  [FAB-ID MODE]")
+        print(f"  Grid: {rows}x{cols}  |  Strategy: price bins (high/mid/bulk/review)")
+        print(f"  Cards identified by fab-card-id: {len(stack)}")
+    elif args.use_cnn:
+        if not args.images_dir:
+            print("  [Error] --use-cnn requires --images-dir <folder of card photos>")
+            sys.exit(1)
+        stack = scan_folder_to_stack(
+            images_dir=args.images_dir,
+            model_path=args.model_path,
+        )
+        if len(stack) == 0:
+            print("  [Error] No images found or identified. Check --images-dir path.")
+            sys.exit(1)
+        print(f"  FaB Card Sorter Simulation  [CNN MODE]")
+        print(f"  Grid: {rows}x{cols}  |  Strategy: {args.strategy}")
+        print(f"  Cards identified by CNN: {len(stack)}  |  Model: {args.model_path}")
+    else:
+        copies = max(1, args.copies)
+        stack = build_stack(SAMPLE_DECK, copies=copies)
+        print(f"\n  FaB Card Sorter Simulation")
+        print(f"  Grid: {rows}x{cols}  |  Strategy: {args.strategy}")
+        print(f"  Unique cards: {len(SAMPLE_DECK)}  |  Copies: {copies}x  |  Total: {len(SAMPLE_DECK) * copies}")
 
     # --- Build components ---
     gantry = build_gantry()
     grid = CardGrid(rows=rows, cols=cols)
-    stack = build_stack(SAMPLE_DECK, copies=copies)
-    sorter = FaBRuleBasedSorter(strategy=args.strategy)
+    if not args.use_fab_id:
+        sorter = FaBRuleBasedSorter(strategy=args.strategy)
 
     sim = Simulation(
         gantry=gantry,
@@ -198,8 +235,8 @@ def main() -> None:
         event_log_path=args.log,
     )
 
-    # Optional CNN hook
-    if args.cnn_hook:
+    # Optional demo CNN hook (only applies in sample-deck mode)
+    if not args.use_cnn and not args.use_fab_id and args.cnn_hook:
         sim.set_cnn_hook(demo_cnn_hook)
         print("  CNN hook: ENABLED (demo mode)")
 

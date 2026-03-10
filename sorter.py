@@ -166,6 +166,64 @@ class FaBRuleBasedSorter:
 
 
 # ---------------------------------------------------------------------------
+# FabIdSorter  —  Driven by fab-card-id sort_bin (pHash + Neon prices)
+# ---------------------------------------------------------------------------
+
+# Maps fab-card-id sort bins to preferred grid rows
+_BIN_ROW: dict[str, int] = {
+    "high_value": 0,
+    "mid_value":  1,
+    "bulk":       2,
+}
+
+
+class FabIdSorter:
+    """
+    Sorter driven by the sort_bin assigned by fab-card-id's SortingPipeline.
+
+    Reads card.raw_cnn_output["sort_bin"] (populated by fab_id_bridge) and
+    routes cards to grid rows by value tier:
+
+        Row 0  — high_value  (>= $10 CAD)
+        Row 1  — mid_value   ($1–$10 CAD)
+        Row 2  — bulk        (< $1 CAD or no price)
+        NEEDS_REVIEW_CELL — review (low confidence) or unknown (no match)
+
+    Within each row cards fill left to right; overflows to any empty cell.
+    Falls back to FaBRuleBasedSorter if no sort_bin is present.
+    """
+
+    def __init__(self, fallback_strategy: str = "by_rarity_and_set") -> None:
+        self._fallback = FaBRuleBasedSorter(strategy=fallback_strategy)
+
+    def assign_cell(self, card: CardData, grid: CardGrid) -> tuple[int, int]:
+        sort_bin = (card.raw_cnn_output or {}).get("sort_bin")
+
+        if sort_bin in ("review", "unknown") or sort_bin is None:
+            nr = config.NEEDS_REVIEW_CELL
+            return min(nr[0], grid.rows - 1), min(nr[1], grid.cols - 1)
+
+        if sort_bin not in _BIN_ROW:
+            return self._fallback.assign_cell(card, grid)
+
+        preferred_row = min(_BIN_ROW[sort_bin], grid.rows - 1)
+
+        # Fill left to right within the preferred row
+        for c in range(grid.cols):
+            cell = grid.get_cell(preferred_row, c)
+            if not cell.is_full:
+                return preferred_row, c
+
+        # Row full — any empty cell in the grid
+        any_cell = grid.find_empty_cell()
+        if any_cell:
+            return any_cell.row, any_cell.col
+
+        nr = config.NEEDS_REVIEW_CELL
+        return min(nr[0], grid.rows - 1), min(nr[1], grid.cols - 1)
+
+
+# ---------------------------------------------------------------------------
 # CNNSorter  —  Integration stub for the real CNN model
 # ---------------------------------------------------------------------------
 

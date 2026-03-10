@@ -33,6 +33,7 @@ class GridCell:
     center_y_mm: float
     label: str                          # e.g. "R0C2"
     occupant: "CardData | None" = field(default=None, repr=False)
+    cards: list = field(default_factory=list, repr=False)  # all cards placed here
     card_count: int = 0
     capacity: int = 50                  # max physical cards in this cell
 
@@ -145,6 +146,7 @@ class CardGrid:
                 f"Cell {cell.label} is full ({cell.card_count}/{cell.capacity} cards)."
             )
         cell.occupant = card
+        cell.cards.append(card)
         cell.card_count += 1
         self._total_placed += 1
 
