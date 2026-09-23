@@ -43,6 +43,9 @@ INTERPOLATION_STEP_MM: float = 1.0  # distance between interpolation ticks
 # --- CNN integration ---
 CNN_CONFIDENCE_THRESHOLD: float = 0.75   # cards below this -> NEEDS_REVIEW cell
 NEEDS_REVIEW_CELL: tuple[int, int] = (0, GRID_COLS - 1)  # top-right corner
+# Cards from a different game than the one being scanned (a Pokémon card in a
+# Riftbound run) get their own pile instead of mixing into review.
+OTHER_GAME_CELL: tuple[int, int] = (GRID_ROWS - 1, GRID_COLS - 1)  # bottom-right corner
 
 # --- Grid presets ---
 GRID_PRESET_SMALL: tuple[int, int] = (4, 3)   # 12 cells

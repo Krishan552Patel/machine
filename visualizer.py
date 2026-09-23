@@ -28,6 +28,7 @@ RARITY_COLORS: dict[str, str] = {
 }
 EMPTY_COLOR = "#FFFFFF"
 REVIEW_COLOR = "#E74C3C"  # needs-review cell — red
+OTHER_GAME_COLOR = "#7F8C8D"  # other-game pile — grey
 
 
 class Visualizer:
@@ -122,7 +123,10 @@ class Visualizer:
 
                 # Is this the needs-review cell?
                 nr = config.NEEDS_REVIEW_CELL
-                if (r, c) == (min(nr[0], g.rows - 1), min(nr[1], g.cols - 1)):
+                og = config.OTHER_GAME_CELL
+                if (r, c) == (min(og[0], g.rows - 1), min(og[1], g.cols - 1)):
+                    face = OTHER_GAME_COLOR
+                elif (r, c) == (min(nr[0], g.rows - 1), min(nr[1], g.cols - 1)):
                     face = REVIEW_COLOR if cell.is_empty else RARITY_COLORS.get(
                         cell.occupant.rarity if cell.occupant else "", REVIEW_COLOR
                     )

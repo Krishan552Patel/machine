@@ -55,10 +55,16 @@ def scan_folder_to_stack(images_dir: str, game: str = "magic"):
     rows = json.loads(proc.stdout)
 
     identified: list[CardData] = []
-    review_count = 0
+    review_count = other_count = 0
     for i, row in enumerate(rows, start=1):
         conf = _CONFIDENCE_MAP.get(row["confidence"], 0.0)
-        if conf < machine_config.CNN_CONFIDENCE_THRESHOLD:
+        # multigame_scan tags each row with its pile; older output only has
+        # confidence, where "foreign" means another game's card.
+        pile = row.get("pile") or ("other_game" if row["confidence"] == "foreign" else None)
+        if pile == "other_game":
+            other_count += 1
+            status = "-> OTHER GAME"
+        elif conf < machine_config.CNN_CONFIDENCE_THRESHOLD:
             review_count += 1
             status = "-> NEEDS REVIEW"
         else:
@@ -77,12 +83,14 @@ def scan_folder_to_stack(images_dir: str, game: str = "magic"):
                 "game": game,
                 "method": row["method"],
                 "mg_confidence": row["confidence"],
+                "pile": pile,
                 "n_candidates": row["n_candidates"],
             },
         ))
 
     print("-" * 65)
     print(f"[MultiGameBridge] {len(identified)} card(s)  |  review: {review_count}  |  "
+          f"other game: {other_count}  |  "
           f"threshold: {machine_config.CNN_CONFIDENCE_THRESHOLD:.2f}\n")
     stack = InputStack()
     stack.load_from_list(identified)
@@ -100,20 +108,28 @@ class MultiGameSetSorter:
         self._set_col: dict[str, int] = {}
 
     def assign_cell(self, card, grid):
+        if (card.raw_cnn_output or {}).get("pile") == "other_game":
+            return _clamp(machine_config.OTHER_GAME_CELL, grid)
         if card.confidence < machine_config.CNN_CONFIDENCE_THRESHOLD:
-            r0, c0 = machine_config.NEEDS_REVIEW_CELL
-            return min(r0, grid.rows - 1), min(c0, grid.cols - 1)
+            return _clamp(machine_config.NEEDS_REVIEW_CELL, grid)
 
         n_set_cols = max(1, grid.cols - 1)  # last column reserved for review
         col = self._set_col.setdefault(card.set_code, len(self._set_col) % n_set_cols)
         for r in range(grid.rows):
             if not grid.get_cell(r, col).is_full:
                 return r, col
-        empty = grid.find_empty_cell()
-        if empty:
-            return empty.row, empty.col
-        r0, c0 = machine_config.NEEDS_REVIEW_CELL
-        return min(r0, grid.rows - 1), min(c0, grid.cols - 1)
+        # Overflow into any free cell — except the two reserved piles.
+        reserved = {_clamp(machine_config.NEEDS_REVIEW_CELL, grid),
+                    _clamp(machine_config.OTHER_GAME_CELL, grid)}
+        for r in range(grid.rows):
+            for c in range(grid.cols):
+                if (r, c) not in reserved and not grid.get_cell(r, c).is_full:
+                    return r, c
+        return _clamp(machine_config.NEEDS_REVIEW_CELL, grid)
+
+
+def _clamp(cell, grid):
+    return min(cell[0], grid.rows - 1), min(cell[1], grid.cols - 1)
 
 
 if __name__ == "__main__":
