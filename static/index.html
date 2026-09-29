@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card Sorter</title>
+<style>
+  :root {
+    --bg: #14171c; --panel: #1d2129; --line: #2e343f;
+    --ink: #e5e9ef; --muted: #8b95a3; --accent: #d9a13c;
+    --good: #4fc06f; --warn: #e0b23e; --bad: #d9605a; --info: #5b9dd9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .mono { font-family: ui-monospace, Consolas, monospace; }
+  header { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: end;
+           padding: .8rem 1rem; background: var(--panel);
+           border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 1rem; margin: 0 1rem 0 0; color: var(--accent);
+              align-self: center; letter-spacing: .04em; }
+  label.f { display: flex; flex-direction: column; gap: 2px;
+            font-size: .72rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: .06em; }
+  select, input { background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 4px; padding: .35rem .5rem;
+    font: inherit; min-width: 7rem; }
+  button { border: 0; border-radius: 4px; padding: .45rem 1.1rem;
+    font: inherit; font-weight: 600; cursor: pointer; }
+  #btn-start { background: var(--good); color: #10231a; }
+  #btn-stop  { background: var(--bad); color: #2a1210; }
+  #btn-pause { background: var(--line); color: var(--ink); }
+  button:disabled { opacity: .4; cursor: default; }
+  #state { margin-left: auto; align-self: center; font-weight: 600; }
+  main { display: grid; grid-template-columns: 400px 1fr;
+         gap: 1rem; padding: 1rem; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 8px; padding: .8rem; }
+  .card h2 { margin: 0 0 .6rem; font-size: .78rem; color: var(--muted);
+             text-transform: uppercase; letter-spacing: .08em; }
+  #panes { display: flex; gap: .6rem; }
+  .pane { flex: 1; text-align: center; }
+  .pane img { width: 100%; aspect-ratio: 63/88; object-fit: contain;
+              background: #000; border-radius: 4px; }
+  .pane .cap { font-size: .7rem; color: var(--muted); margin-top: .25rem; }
+  #id-name { font-size: 1.05rem; font-weight: 600; margin: .5rem 0 .1rem; }
+  #id-line { color: var(--muted); font-size: .85rem; }
+  .badge { display: inline-block; border-radius: 3px; padding: .05rem .45rem;
+           font-size: .72rem; font-weight: 700; margin-right: .35rem; }
+  .b-phash    { background: #1d4d2c; color: #7fe0a0; }
+  .b-features { background: #1d3a5c; color: #8fc4f4; }
+  .b-ocr      { background: #52401b; color: #f0cd7c; }
+  .b-foreign-bg { background: #4d2320; color: #f0a29c; }
+  .b-high { color: var(--good); } .b-low, .b-medium { color: var(--warn); }
+  .b-none, .b-foreign { color: var(--bad); }
+  #decision { margin-top: .5rem; font-size: .9rem; }
+  #history { list-style: none; margin: .4rem 0 0; padding: 0;
+             max-height: 220px; overflow-y: auto; font-size: .82rem; }
+  #history li { display: flex; gap: .5rem; padding: .2rem 0;
+                border-bottom: 1px solid var(--line); }
+  #history .t { color: var(--muted); min-width: 3.2rem; }
+  canvas { width: 100%; border-radius: 6px; background: #101318; }
+  #statbar { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: .8rem; }
+  .stat { min-width: 6.5rem; }
+  .stat b { display: block; font-size: 1.3rem;
+            font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .7rem; color: var(--muted);
+               text-transform: uppercase; letter-spacing: .06em; }
+  #tiers { margin-top: .6rem; font-size: .78rem; color: var(--muted); }
+  #log { color: var(--muted); font-size: .78rem; margin-top: .5rem;
+         min-height: 1.2em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CARD SORTER</h1>
+  <label class="f">game
+    <select id="game">
+      <option value="riftbound">Riftbound</option>
+      <option value="magic">Magic</option>
+      <option value="pokemon">Pokemon</option>
+      <option value="fab">Flesh and Blood</option>
+    </select></label>
+  <label class="f">sort by
+    <select id="mode">
+      <option value="rarity">Rarity</option>
+      <option value="type">Type</option>
+    </select></label>
+  <label class="f">source
+    <select id="source">
+      <option value="phone">Phone camera</option>
+      <option value="folder">Folder</option>
+    </select></label>
+  <label class="f" id="f-ip">phone ip
+    <input id="ip" value="192.168.103.11" size="13"></label>
+  <label class="f" id="f-folder" style="display:none">folder
+    <input id="folder" size="28"
+      value="C:\Users\kuro\fab-card-id\debug_captures"></label>
+  <label class="f">grid
+    <select id="gridsize">
+      <option value="6x4">6 x 4</option><option value="4x4">4 x 4</option>
+      <option value="6x6">6 x 6</option><option value="8x6">8 x 6</option>
+    </select></label>
+  <label class="f">accuracy
+    <select id="accuracy">
+      <option value="fast">Fast (image only)</option>
+      <option value="ocr">Max (+ OCR, slower)</option>
+    </select></label>
+  <button id="btn-start">Start</button>
+  <button id="btn-pause" disabled>Pause</button>
+  <button id="btn-stop" disabled>Stop</button>
+  <span id="state">idle</span>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>Identification</h2>
+      <div id="panes">
+        <div class="pane"><img id="img-crop" alt="camera crop">
+          <div class="cap">camera crop</div></div>
+        <div class="pane"><img id="img-ref" alt="reference">
+          <div class="cap">matched reference</div></div>
+      </div>
+      <div id="id-name">—</div>
+      <div id="id-line"></div>
+      <div id="decision"></div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <h2>History</h2>
+      <ul id="history"></ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Grid + gantry</h2>
+      <canvas id="cv" width="1000" height="640"></canvas>
+      <div id="tiers"></div>
+      <div id="statbar">
+        <div class="stat"><b id="s-sorted">0</b><span>sorted</span></div>
+        <div class="stat"><b id="s-review">0</b><span>review</span></div>
+        <div class="stat"><b id="s-other">0</b><span>other game</span></div>
+        <div class="stat"><b id="s-cph">0</b><span>cards / hour</span></div>
+        <div class="stat"><b id="s-travel">0</b><span>travel mm</span></div>
+        <div class="stat"><b id="s-simt">0</b><span>sim time s</span></div>
+      </div>
+      <div id="log"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+
+// ── controls ────────────────────────────────────────────────────────────
+$("source").onchange = () => {
+  const phone = $("source").value === "phone";
+  $("f-ip").style.display = phone ? "" : "none";
+  $("f-folder").style.display = phone ? "none" : "";
+};
+async function post(path, body) {
+  await fetch(path, {method: "POST", body: JSON.stringify(body || {})});
+}
+$("btn-start").onclick = () => {
+  const [rows, cols] = $("gridsize").value.split("x").map(Number);
+  post("/api/start", {
+    game: $("game").value, mode: $("mode").value,
+    source: $("source").value, ip: $("ip").value,
+    folder: $("folder").value, rows, cols,
+    fast: $("accuracy").value === "fast",
+  });
+};
+$("btn-stop").onclick = () => post("/api/stop");
+let paused = false;
+$("btn-pause").onclick = () => {
+  paused = !paused;
+  $("btn-pause").textContent = paused ? "Resume" : "Pause";
+  post("/api/pause", {paused});
+};
+
+// ── grid rendering ──────────────────────────────────────────────────────
+const cv = $("cv"), ctx = cv.getContext("2d");
+let G = {rows: 6, cols: 4, cells: [], review_cell: [0, 3], other_cell: [5, 3]};
+let TIERS = [];
+let head = {x: 0.05, y: 0.05, tx: 0.05, ty: 0.05, t0: 0, dur: 0,
+            sx: 0.05, sy: 0.05};
+const RCOLORS = {showcase: "#b46ee0", promo: "#e0a13c", epic: "#d9605a",
+  rare: "#5b9dd9", uncommon: "#4fc06f", common: "#8b95a3",
+  mythic: "#e0793c", special: "#b46ee0", bonus: "#b46ee0",
+  f: "#e8c53f", l: "#b46ee0", m: "#e0793c", cf: "#c8cdd6", s: "#c8cdd6",
+  r: "#5b9dd9", c: "#8b95a3", t: "#6a7280"};
+
+function cellRect(r, c) {
+  const pad = 46, W = cv.width - pad * 2, H = cv.height - pad * 2;
+  const cw = W / G.cols, ch = H / G.rows;
+  return [pad + c * cw + 3, pad + r * ch + 3, cw - 6, ch - 6];
+}
+function draw(now) {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.font = "12px Consolas, monospace";
+  // tier labels on the left
+  for (let r = 0; r < G.rows; r++) {
+    const [x, y, , h] = cellRect(r, 0);
+    ctx.fillStyle = "#8b95a3";
+    ctx.save();
+    ctx.translate(14, y + h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText((TIERS[r] || (r === G.rows - 1 ? "bulk" : "")).slice(0, 12), 0, 0);
+    ctx.restore();
+  }
+  const byRC = {};
+  for (const c of G.cells) byRC[c.r + "," + c.c] = c;
+  for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
+    const [x, y, w, h] = cellRect(r, c);
+    const cell = byRC[r + "," + c] || {n: 0, names: [], rarity: ""};
+    const isReview = r === G.review_cell[0] && c === G.review_cell[1];
+    const isOther = r === G.other_cell[0] && c === G.other_cell[1];
+    ctx.fillStyle = cell.n ? "#232936" : "#181c23";
+    ctx.strokeStyle = isReview ? "#d9605a" : isOther ? "#8b95a3" : "#2e343f";
+    ctx.lineWidth = (isReview || isOther) ? 2 : 1;
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); ctx.stroke();
+    if (isReview || isOther) {
+      ctx.fillStyle = isReview ? "#d9605a" : "#8b95a3";
+      ctx.fillText(isReview ? "REVIEW" : "OTHER GAME", x + 6, y + 14);
+    }
+    if (cell.n) {
+      const col = RCOLORS[(cell.rarity || "").toLowerCase()] || "#e5e9ef";
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(x + w - 16, y + 16, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = "#10131a"; ctx.textAlign = "center";
+      ctx.fillText(cell.n, x + w - 16, y + 20); ctx.textAlign = "left";
+      ctx.fillStyle = "#e5e9ef";
+      cell.names.slice(-2).forEach((n, i) =>
+        ctx.fillText(n.slice(0, Math.floor(w / 7.2)), x + 6, y + h - 22 + i * 14));
+    }
+  }
+  // gantry head (animated between stack and target)
+  let hx = head.tx, hy = head.ty;
+  if (head.dur > 0) {
+    const f = Math.min(1, (now - head.t0) / (head.dur * 1000));
+    hx = head.sx + (head.tx - head.sx) * f;
+    hy = head.sy + (head.ty - head.sy) * f;
+  }
+  ctx.strokeStyle = "#d9a13c"; ctx.lineWidth = 1;
+  const px = 46 + hx * (cv.width - 92), py = 46 + hy * (cv.height - 92);
+  ctx.beginPath(); ctx.moveTo(px, 8); ctx.lineTo(px, cv.height - 8);
+  ctx.moveTo(8, py); ctx.lineTo(cv.width - 8, py); ctx.stroke();
+  ctx.fillStyle = "#d9a13c";
+  ctx.beginPath(); ctx.arc(px, py, 7, 0, 7); ctx.fill();
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function moveHeadToCell(r, c, dur) {
+  const [x, y, w, h] = cellRect(r, c);
+  head.sx = head.tx; head.sy = head.ty;
+  head.tx = (x + w / 2 - 46) / (cv.width - 92);
+  head.ty = (y + h / 2 - 46) / (cv.height - 92);
+  head.t0 = performance.now(); head.dur = dur || 0.5;
+}
+
+// ── event stream ────────────────────────────────────────────────────────
+const badges = m => {
+  const cls = m.confidence === "foreign" ? "b-foreign-bg"
+            : m.method === "phash" ? "b-phash"
+            : m.method === "features" ? "b-features" : "b-ocr";
+  const mName = {phash: "IMAGE HASH", features: "KEYPOINTS",
+                 phash_foreign: "WRONG GAME",
+                 collector_ocr: "COLLECTOR OCR", name_ocr: "NAME OCR"}[m.method]
+                 || (m.method || "?").toUpperCase();
+  return `<span class="badge ${cls}">${mName}</span>` +
+    `<span class="b-${m.confidence}">${m.confidence}</span>` +
+    ` <span class="mono">${m.detail || ""} · ${m.ms} ms</span>`;
+};
+
+const es = new EventSource("/events");
+es.onmessage = e => {
+  const ev = JSON.parse(e.data);
+  if (ev.type === "session") {
+    $("state").textContent = ev.state + (ev.error ? ": " + ev.error : "");
+    $("state").style.color = ev.state === "running" ? "var(--good)"
+      : ev.state === "error" ? "var(--bad)" : "var(--muted)";
+    const running = ev.state === "running" || ev.state === "loading";
+    $("btn-stop").disabled = !running; $("btn-pause").disabled = !running;
+    if (ev.tiers) {
+      TIERS = ev.tiers;
+      $("tiers").textContent = ev.tiers.length
+        ? `rows (top to bottom): ${ev.tiers.join(" · ")} — unknown -> bottom row`
+        : "no tier data for this game — everything lands on the bottom row";
+    }
+  } else if (ev.type === "identify") {
+    if (ev.crop_b64) $("img-crop").src = "data:image/jpeg;base64," + ev.crop_b64;
+    $("img-ref").src = ev.ref_image ? "/ref?p=" + encodeURIComponent(ev.ref_image) : "";
+    if (ev.found) {
+      $("id-name").textContent = ev.name;
+      $("id-line").innerHTML =
+        `${(ev.set || "").toUpperCase()} ${ev.collector} · ` +
+        `${ev.rarity || "?"} · ${ev.type_line || "?"}<br>` + badges(ev);
+    } else {
+      $("id-name").textContent = "no match";
+      $("id-line").innerHTML = `<span class="b-none">none</span> ` +
+        `<span class="mono">${ev.ms} ms · crop=${ev.crop_how}</span>`;
+      $("decision").textContent = "";
+    }
+  } else if (ev.type === "sort") {
+    $("decision").textContent = `-> cell [${ev.cell}]  (${ev.reason})`;
+    moveHeadToCell(ev.cell[0], ev.cell[1],
+                   ev.moves && ev.moves[1] ? ev.moves[1].dur : 0.5);
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="t mono">${new Date().toLocaleTimeString(
+      [], {hour12: false})}</span><span>${ev.name}</span>` +
+      `<span class="mono" style="color:var(--muted)">[${ev.cell}] ${ev.reason}</span>`;
+    $("history").prepend(li);
+    while ($("history").children.length > 60) $("history").lastChild.remove();
+  } else if (ev.type === "grid") {
+    G = ev;
+  } else if (ev.type === "stats") {
+    $("s-sorted").textContent = ev.sorted;
+    $("s-review").textContent = ev.review;
+    $("s-other").textContent = ev.other_game;
+    $("s-cph").textContent = ev.cards_per_hour;
+    $("s-travel").textContent = ev.travel_mm;
+    $("s-simt").textContent = ev.sim_time_s;
+  } else if (ev.type === "status") {
+    $("log").textContent = ev.msg;
+  }
+};
+</script>
+</body>
+</html>

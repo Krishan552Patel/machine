@@ -87,3 +87,26 @@ FAB_SETS: list[str] = [
     "OUT",  # Outsiders
     "HVY",  # Heavy Hitters
 ]
+
+
+# --- Multi-game sorting (rarity tiers + type orders per game) ---------------
+# Row 0 is the most valuable tier; rows past the grid height clamp to the
+# last row.  Rarity strings match each game's index vocabulary (see
+# fab-card-id CARD_DATA_ROOT/<game>/index.json).
+MULTIGAME_RARITY_TIERS: dict[str, list[str]] = {
+    "riftbound": ["Showcase", "Promo", "Epic", "Rare", "Uncommon", "Common"],
+    "magic": ["mythic", "special", "bonus", "rare", "uncommon", "common"],
+    # Pokémon's snapshot carries no rarity yet — everything lands on the
+    # last row until Price_compare's snapshot grows a rarity field.
+    "pokemon": [],
+    "fab": ["F", "L", "M", "CF", "S", "R", "C", "T"],
+}
+
+# Primary card types per game, row order for the "type" strategy.
+MULTIGAME_TYPE_ORDERS: dict[str, list[str]] = {
+    "riftbound": ["Legend", "Unit", "Spell", "Gear", "Rune", "Battlefield"],
+    "magic": ["Creature", "Planeswalker", "Instant", "Sorcery", "Artifact",
+              "Enchantment", "Battle", "Land"],
+    "pokemon": [],
+    "fab": [],
+}

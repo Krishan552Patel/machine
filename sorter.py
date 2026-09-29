@@ -297,3 +297,77 @@ class CNNSorter:
             "confidence": card.confidence,
             "top_predictions": [],
         }
+
+
+# ---------------------------------------------------------------------------
+# MultiGameSorter  —  rarity- or type-row sorting for any game the
+#                     fab-card-id identify service knows (riftbound, magic,
+#                     pokemon, fab).  Tier tables live in config.
+# ---------------------------------------------------------------------------
+
+class MultiGameSorter:
+    """
+    Row = the card's tier (rarity or primary type) in the active game's
+    tier list; column fills left to right.  Cards below the confidence
+    threshold go to NEEDS_REVIEW_CELL; cards positively identified as a
+    different game go to OTHER_GAME_CELL; unknown tiers land on the last
+    row (bulk).
+    """
+
+    def __init__(self, game: str, mode: str = "rarity") -> None:
+        if mode not in ("rarity", "type"):
+            raise ValueError(f"mode must be 'rarity' or 'type', got {mode!r}")
+        self.game = game
+        self.mode = mode
+        tiers = (config.MULTIGAME_RARITY_TIERS if mode == "rarity"
+                 else config.MULTIGAME_TYPE_ORDERS).get(game, [])
+        self._tier_row = {t.lower(): i for i, t in enumerate(tiers)}
+
+    def tier_of(self, card: CardData) -> str:
+        raw = card.raw_cnn_output or {}
+        if self.mode == "rarity":
+            return card.rarity or raw.get("rarity", "")
+        # Primary type: first word of the type line handles Magic's
+        # "Legendary Creature — Elf" via containment below.
+        return raw.get("type_line", "") or getattr(card, "type_line", "")
+
+    def _tier_index(self, tier: str) -> int | None:
+        t = tier.lower()
+        if t in self._tier_row:
+            return self._tier_row[t]
+        # Magic type lines embed the primary type ("Legendary Creature — …").
+        for name, i in self._tier_row.items():
+            if name in t:
+                return i
+        return None
+
+    def assign_cell(self, card: CardData, grid: CardGrid) -> tuple[int, int]:
+        raw = card.raw_cnn_output or {}
+        if raw.get("confidence_str") == "foreign":
+            return (min(config.OTHER_GAME_CELL[0], grid.rows - 1),
+                    min(config.OTHER_GAME_CELL[1], grid.cols - 1))
+        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD:
+            return (min(config.NEEDS_REVIEW_CELL[0], grid.rows - 1),
+                    min(config.NEEDS_REVIEW_CELL[1], grid.cols - 1))
+        idx = self._tier_index(self.tier_of(card))
+        row = grid.rows - 1 if idx is None else min(idx, grid.rows - 1)
+        for c in range(grid.cols):
+            if not grid.get_cell(row, c).is_full:
+                return row, c
+        cell = grid.find_empty_cell()
+        if cell:
+            return cell.row, cell.col
+        return grid.rows - 1, grid.cols - 1
+
+    def describe(self, card: CardData, cell: tuple[int, int]) -> str:
+        """Human-readable reason for the UI's sort-decision panel."""
+        raw = card.raw_cnn_output or {}
+        if raw.get("confidence_str") == "foreign":
+            return "not this game -> other-game pile"
+        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD:
+            return f"low confidence ({raw.get('confidence_str', '?')}) -> review"
+        tier = self.tier_of(card)
+        idx = self._tier_index(tier)
+        if idx is None:
+            return f"{self.mode} '{tier or 'unknown'}' not in tier list -> bulk row"
+        return f"{self.mode} '{tier}' -> row {cell[0]}"
