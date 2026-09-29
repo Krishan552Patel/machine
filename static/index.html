@@ -104,8 +104,9 @@
     </select></label>
   <label class="f">accuracy
     <select id="accuracy">
+      <option value="auto">Auto (image + collector OCR)</option>
       <option value="fast">Fast (image only)</option>
-      <option value="ocr">Max (+ OCR, slower)</option>
+      <option value="max">Max (full OCR, slowest)</option>
     </select></label>
   <button id="btn-start">Start</button>
   <button id="btn-pause" disabled>Pause</button>
@@ -170,7 +171,7 @@ $("btn-start").onclick = () => {
     game: $("game").value, mode: $("mode").value,
     source: $("source").value, ip: $("ip").value,
     folder: $("folder").value, rows, cols,
-    fast: $("accuracy").value === "fast",
+    accuracy: $("accuracy").value,
   });
 };
 $("btn-stop").onclick = () => post("/api/stop");

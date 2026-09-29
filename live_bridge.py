@@ -43,8 +43,8 @@ class IdentClient:
             return {"ok": False, "error": "identify service closed stdout"}
         return json.loads(line)
 
-    def init(self, game: str, fast: bool = True) -> dict:
-        resp = self._rpc({"cmd": "init", "game": game, "fast": fast})
+    def init(self, game: str, mode: str = "auto") -> dict:
+        resp = self._rpc({"cmd": "init", "game": game, "mode": mode})
         if resp.get("ok"):
             self.game = game
         return resp
