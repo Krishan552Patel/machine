@@ -110,7 +110,8 @@ class SortSession(threading.Thread):
         self.emit("session", state="loading", game=self.game, mode=self.mode,
                   tiers=tiers)
         self.svc = IdentClient()
-        resp = self.svc.init(self.game, mode=self.cfg.get("accuracy", "auto"))
+        resp = self.svc.init(self.game, mode=self.cfg.get("accuracy", "auto"),
+                             fixed_orientation=bool(self.cfg.get("fixed_orientation")))
         if not resp.get("ok"):
             self.emit("session", state="error",
                       error=f"identify service failed: {resp.get('error')}")
