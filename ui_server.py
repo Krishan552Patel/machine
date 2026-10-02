@@ -105,8 +105,11 @@ class SortSession(threading.Thread):
 
     # ── main loop ────────────────────────────────────────────────────────
     def run(self):
-        tiers = (config.MULTIGAME_RARITY_TIERS if self.mode == "rarity"
-                 else config.MULTIGAME_TYPE_ORDERS).get(self.game, [])
+        if self.mode == "price":
+            tiers = [label for label, _ in config.PRICE_TIERS_CAD]
+        else:
+            tiers = (config.MULTIGAME_RARITY_TIERS if self.mode == "rarity"
+                     else config.MULTIGAME_TYPE_ORDERS).get(self.game, [])
         self.emit("session", state="loading", game=self.game, mode=self.mode,
                   tiers=tiers)
         self.svc = IdentClient()
@@ -159,7 +162,8 @@ class SortSession(threading.Thread):
                 continue
             if res.get("ref_image"):
                 self.allowed_refs.add(res["ref_image"])
-            self.emit("identify", **{k: res.get(k, "") for k in (
+            self.emit("identify", price=res.get("price"),
+                      **{k: res.get(k, "") for k in (
                 "found", "key", "name", "set", "collector", "rarity",
                 "type_line", "method", "confidence", "detail", "ms",
                 "crop_b64", "ref_image", "crop_how")})
@@ -240,7 +244,8 @@ class SortSession(threading.Thread):
         self.stats[{"other": "other_game", "review": "review"}.get(kind, "sorted")] += 1
         self.emit("sort", key=res.get("key", ""), name=card.name,
                   cell=list(cell), reason=reason, moves=moves,
-                  rarity=card.rarity, type_line=res.get("type_line", ""))
+                  rarity=card.rarity, type_line=res.get("type_line", ""),
+                  price=res.get("price"))
         self.emit_grid()
         self.emit_stats()
 

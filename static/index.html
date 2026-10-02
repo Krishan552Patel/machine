@@ -121,10 +121,18 @@
   #tiers { margin-top: .6rem; font-size: .76rem; color: var(--faint); }
   #log { color: var(--muted); font-size: .78rem; margin-top: .7rem; min-height: 1.2em; }
 
-  #history { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
-  #history li { display: grid; grid-template-columns: 3.4rem 1fr auto; gap: .5rem;
-    padding: .32rem 0; border-bottom: 1px solid var(--line); font-size: .82rem; }
-  #history .t { color: var(--faint); } #history .r { color: var(--muted); font-size: .76rem; }
+  #sorted-total { color: var(--faint); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  #sorted-list { max-height: 380px; overflow-y: auto; }
+  .bin-group { margin-bottom: .7rem; }
+  .bin-head { display: flex; justify-content: space-between; align-items: center;
+    padding: .3rem 0; border-bottom: 1px solid var(--line); margin-bottom: .2rem; }
+  .bin-head .nm { display: flex; align-items: center; gap: .4rem; font-weight: 600; font-size: .86rem; }
+  .bin-head .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .bin-head .ct { color: var(--muted); font-size: .76rem; }
+  .bin-group ul { list-style: none; margin: 0; padding: 0; }
+  .bin-group li { display: flex; justify-content: space-between; gap: .5rem;
+    padding: .2rem 0 .2rem .9rem; font-size: .82rem; color: var(--ink); }
+  .bin-group li .pr { color: var(--good); font-variant-numeric: tabular-nums; }
 
   /* backend bar */
   #backend { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
@@ -190,10 +198,13 @@
     <div class="card">
       <h2><span class="step-no">2</span> How to sort</h2>
       <label class="fieldlabel">Sort cards by</label>
-      <div class="seg" id="seg-mode">
+      <div class="seg sm" id="seg-mode">
         <button data-v="rarity" aria-pressed="true">Rarity</button>
-        <button data-v="type">Card type</button>
+        <button data-v="type">Type</button>
+        <button data-v="price">Price</button>
       </div>
+      <p class="hint" id="price-hint" style="display:none">Prices from
+        Price-compare (CAD). Cards with no known price go to the bottom row.</p>
       <label class="fieldlabel" style="margin-top:.9rem" for="gridsize">Bin grid size</label>
       <select id="gridsize">
         <option value="6x4">6 rows × 4 cols — 24 bins</option>
@@ -264,9 +275,9 @@
     </div>
 
     <div class="card">
-      <h2>Recent cards</h2>
-      <ul id="history"></ul>
-      <div class="empty" id="hist-empty">Sorted cards will appear here.</div>
+      <h2>All sorted cards <span id="sorted-total"></span></h2>
+      <div id="sorted-list"></div>
+      <div class="empty" id="hist-empty">Sorted cards will appear here, grouped by bin.</div>
     </div>
 
     <div class="card">
@@ -296,7 +307,9 @@ const SOURCE = seg("seg-source", v => {
   $("src-phone").style.display = v === "phone" ? "" : "none";
   $("src-folder").style.display = v === "folder" ? "" : "none";
 });
-const MODE = seg("seg-mode");
+const MODE = seg("seg-mode", v => {
+  $("price-hint").style.display = v === "price" ? "" : "none";
+});
 const ACCURACY = seg("seg-accuracy", updateAccHint);
 const ACC_TEXT = {
   auto: "Image match first (~0.2–0.5 s); reads the collector number only when needed. Best all-round.",
@@ -350,6 +363,34 @@ const RCOLORS = {showcase: "#b46ee0", promo: "#e0a13c", epic: "#d9605a",
   mythic: "#e0793c", special: "#b46ee0", bonus: "#b46ee0",
   f: "#e8c53f", l: "#b46ee0", m: "#e0793c", cf: "#c8cdd6", s: "#c8cdd6",
   r: "#5b9dd9", c: "#8b95a3", t: "#6a7280"};
+// price-tier colours (value high → low)
+const PCOLORS = ["#e0a94a", "#4fc06f", "#5b9dd9", "#8b95a3"];
+let SORTMODE = "rarity";
+let ALL_SORTED = {};   // tier label -> [{name, price, row}]
+const money = p => (p === null || p === undefined) ? "" : "$" + Number(p).toFixed(2);
+
+// full list of every sorted card, grouped by bin (row order)
+function renderSorted() {
+  const groups = Object.entries(ALL_SORTED);
+  let total = 0; groups.forEach(([, a]) => total += a.length);
+  $("sorted-total").textContent = total ? `· ${total} total` : "";
+  $("hist-empty").style.display = total ? "none" : "";
+  groups.sort((a, b) => (a[1][0].row) - (b[1][0].row));
+  $("sorted-list").innerHTML = groups.map(([tier, cards]) => {
+    const col = tierColor(tier, cards[0].row);
+    const rows = cards.map(c =>
+      `<li><span>${c.name}</span>${c.price != null ? `<span class="pr">${money(c.price)}</span>` : ""}</li>`).join("");
+    return `<div class="bin-group"><div class="bin-head">` +
+      `<span class="nm"><span class="sw" style="background:${col}"></span>${tier}</span>` +
+      `<span class="ct">${cards.length} card${cards.length > 1 ? "s" : ""}</span></div>` +
+      `<ul>${rows}</ul></div>`;
+  }).join("");
+}
+// colour for a tier: price mode uses the row position, else the rarity map
+function tierColor(tierLabel, rowIdx) {
+  if (SORTMODE === "price") return PCOLORS[Math.min(rowIdx, PCOLORS.length - 1)] || "#8b95a3";
+  return RCOLORS[(tierLabel || "").toLowerCase()] || "#cfd6df";
+}
 
 function cellRect(r, c) {
   const pad = 44, W = cv.width - pad * 2, H = cv.height - pad * 2;
@@ -382,7 +423,7 @@ function draw(now) {
       ctx.fillText(isReview ? "REVIEW" : "OTHER GAME", x + 7, y + 15);
     }
     if (cell.n) {
-      const col = RCOLORS[(cell.rarity || "").toLowerCase()] || "#e5e9ef";
+      const col = tierColor(TIERS[r] || cell.rarity, r);
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + w - 16, y + 16, 9, 0, 7); ctx.fill();
       ctx.fillStyle = "#10131a"; ctx.textAlign = "center";
       ctx.fillText(cell.n, x + w - 16, y + 20); ctx.textAlign = "left";
@@ -413,8 +454,8 @@ function moveHeadToCell(r, c, dur) {
 }
 function drawLegend() {
   const tiers = TIERS.length ? TIERS : [];
-  const items = tiers.map(t => {
-    const col = RCOLORS[t.toLowerCase()] || "#cfd6df";
+  const items = tiers.map((t, i) => {
+    const col = tierColor(t, i);
     return `<span class="lg"><span class="sw" style="background:${col}"></span>${t}</span>`;
   });
   items.push(`<span class="lg"><span class="sw" style="background:#d9605a"></span>review</span>`);
@@ -496,7 +537,8 @@ es.onmessage = e => {
     const active = ev.state === "running" || ev.state === "loading";
     $("btn-stop").disabled = !active; $("btn-pause").disabled = !active;
     $("btn-start").disabled = active;
-    if (ev.state === "loading") $("id-name").textContent = "Loading " + (ev.game || "") + " card data…";
+    if (ev.state === "loading") { $("id-name").textContent = "Loading " + (ev.game || "") + " card data…"; ALL_SORTED = {}; renderSorted(); }
+    if (ev.mode) SORTMODE = ev.mode;
     if (ev.tiers) {
       TIERS = ev.tiers; drawLegend();
       $("tiers").textContent = ev.tiers.length
@@ -511,21 +553,20 @@ es.onmessage = e => {
     $("id-name").classList.remove("empty");
     if (ev.found) {
       $("id-name").textContent = ev.name;
-      $("id-line").innerHTML = `${(ev.set || "").toUpperCase()} ${ev.collector} · ${ev.rarity || "?"} · ${ev.type_line || "?"}<br>` + badges(ev);
+      const pr = money(ev.price);
+      $("id-line").innerHTML = `${(ev.set || "").toUpperCase()} ${ev.collector} · ${ev.rarity || "?"} · ${ev.type_line || "?"}` +
+        (pr ? ` · <b style="color:var(--good)">${pr}</b>` : "") + `<br>` + badges(ev);
     } else {
       $("id-name").textContent = "no match";
       $("id-line").innerHTML = `<span class="b-none">none</span> <span class="mono" style="color:var(--muted)">${ev.ms} ms · ${ev.crop_how}</span>`;
       $("decision").textContent = "";
     }
   } else if (ev.type === "sort") {
-    const nice = ev.reason;
-    $("decision").innerHTML = `→ <b>${TIERS[ev.cell[0]] || "bin"}</b> row &nbsp;<span style="color:var(--muted)">${nice}</span>`;
+    $("decision").innerHTML = `→ <b>${TIERS[ev.cell[0]] || "bin"}</b> row &nbsp;<span style="color:var(--muted)">${ev.reason}</span>`;
     moveHeadToCell(ev.cell[0], ev.cell[1], ev.moves && ev.moves[1] ? ev.moves[1].dur : 0.5);
-    const li = document.createElement("li");
-    li.innerHTML = `<span class="t mono">${new Date().toLocaleTimeString([], {hour12: false})}</span>` +
-      `<span>${ev.name}</span><span class="r">${TIERS[ev.cell[0]] || ("row " + ev.cell[0])}</span>`;
-    $("history").prepend(li);
-    while ($("history").children.length > 80) $("history").lastChild.remove();
+    const tier = TIERS[ev.cell[0]] || ("row " + ev.cell[0]);
+    (ALL_SORTED[tier] = ALL_SORTED[tier] || []).push({name: ev.name, price: ev.price, row: ev.cell[0]});
+    renderSorted();
   } else if (ev.type === "grid") {
     G = ev;
   } else if (ev.type === "stats") {

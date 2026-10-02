@@ -315,16 +315,34 @@ class MultiGameSorter:
     """
 
     def __init__(self, game: str, mode: str = "rarity") -> None:
-        if mode not in ("rarity", "type"):
-            raise ValueError(f"mode must be 'rarity' or 'type', got {mode!r}")
+        if mode not in ("rarity", "type", "price"):
+            raise ValueError(f"mode must be rarity/type/price, got {mode!r}")
         self.game = game
         self.mode = mode
-        tiers = (config.MULTIGAME_RARITY_TIERS if mode == "rarity"
-                 else config.MULTIGAME_TYPE_ORDERS).get(game, [])
+        if mode == "price":
+            tiers = [label for label, _ in config.PRICE_TIERS_CAD]
+        else:
+            tiers = (config.MULTIGAME_RARITY_TIERS if mode == "rarity"
+                     else config.MULTIGAME_TYPE_ORDERS).get(game, [])
         self._tier_row = {t.lower(): i for i, t in enumerate(tiers)}
+
+    @staticmethod
+    def _price_of(card: CardData):
+        return (card.raw_cnn_output or {}).get("price")
+
+    def _price_tier(self, price) -> str:
+        """Label of the price band a CAD price falls in; '' if no price."""
+        if price is None:
+            return ""
+        for label, floor in config.PRICE_TIERS_CAD:
+            if price >= floor:
+                return label
+        return config.PRICE_TIERS_CAD[-1][0]
 
     def tier_of(self, card: CardData) -> str:
         raw = card.raw_cnn_output or {}
+        if self.mode == "price":
+            return self._price_tier(self._price_of(card))
         if self.mode == "rarity":
             return card.rarity or raw.get("rarity", "")
         # Primary type: first word of the type line handles Magic's
@@ -348,6 +366,10 @@ class MultiGameSorter:
         rarities disagree here, so they still go to review.)"""
         tier = self.tier_of(card)
         if self._tier_index(tier) is None:
+            return False
+        # Price is printing-specific (candidates carry no price), so an
+        # ambiguous printing can't be confidently price-binned — review it.
+        if self.mode == "price":
             return False
         for c in (card.raw_cnn_output or {}).get("candidates", []):
             ctier = (c.get("rarity", "") if self.mode == "rarity"
@@ -397,6 +419,11 @@ class MultiGameSorter:
             return f"low confidence ({raw.get('confidence_str', '?')}) -> review"
         tier = self.tier_of(card)
         idx = self._tier_index(tier)
+        if self.mode == "price":
+            price = self._price_of(card)
+            if price is None:
+                return "no price available -> bottom row"
+            return f"${price:.2f} -> {tier} row"
         if idx is None:
             return f"{self.mode} '{tier or 'unknown'}' not in tier list -> bulk row"
         if low:

@@ -127,5 +127,6 @@ def card_data_from_result(res: dict):
             "game": res.get("game", ""),
             "ms": res.get("ms", 0),
             "candidates": res.get("candidates", []),
+            "price": res.get("price"),
         },
     )

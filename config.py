@@ -110,3 +110,16 @@ MULTIGAME_TYPE_ORDERS: dict[str, list[str]] = {
     "pokemon": [],
     "fab": [],
 }
+
+
+# --- Price-tier sorting (CAD) -----------------------------------------------
+# Row order for the "price" strategy: most valuable tier is row 0.  Prices
+# come from Price-compare's Oracle DB via fab-card-id's price_source (cached
+# in <CARD_DATA_ROOT>/<game>/prices.json).  A card with no known price lands
+# on the last row ("no price / bulk").
+PRICE_TIERS_CAD: list[tuple[str, float]] = [
+    ("$20+",    20.0),
+    ("$5–20",    5.0),
+    ("$1–5",     1.0),
+    ("under $1", 0.0),
+]
