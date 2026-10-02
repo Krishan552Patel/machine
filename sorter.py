@@ -341,12 +341,40 @@ class MultiGameSorter:
                 return i
         return None
 
+    def _tier_known(self, card: CardData) -> bool:
+        """A low-confidence card is still placeable if the match AND every
+        ambiguous candidate agree on this sort's tier — the exact printing is
+        uncertain, but the rarity/type bin is not.  (Alt-art variants that span
+        rarities disagree here, so they still go to review.)"""
+        tier = self.tier_of(card)
+        if self._tier_index(tier) is None:
+            return False
+        for c in (card.raw_cnn_output or {}).get("candidates", []):
+            ctier = (c.get("rarity", "") if self.mode == "rarity"
+                     else c.get("type_line", ""))
+            if self._tier_index(ctier) != self._tier_index(tier):
+                return False
+        return True
+
+    def placement_kind(self, card: CardData) -> str:
+        """Classify where a card is headed — 'other', 'review', or 'sorted' —
+        matching assign_cell's branching, so stats are correct even though the
+        review/other cells geometrically sit inside tier rows."""
+        raw = card.raw_cnn_output or {}
+        if raw.get("confidence_str") == "foreign":
+            return "other"
+        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD and not self._tier_known(card):
+            return "review"
+        return "sorted"
+
     def assign_cell(self, card: CardData, grid: CardGrid) -> tuple[int, int]:
         raw = card.raw_cnn_output or {}
         if raw.get("confidence_str") == "foreign":
             return (min(config.OTHER_GAME_CELL[0], grid.rows - 1),
                     min(config.OTHER_GAME_CELL[1], grid.cols - 1))
-        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD:
+        # Review only when we genuinely can't place it: unidentified, or
+        # low-confidence AND the printing ambiguity spans different tiers.
+        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD and not self._tier_known(card):
             return (min(config.NEEDS_REVIEW_CELL[0], grid.rows - 1),
                     min(config.NEEDS_REVIEW_CELL[1], grid.cols - 1))
         idx = self._tier_index(self.tier_of(card))
@@ -364,10 +392,13 @@ class MultiGameSorter:
         raw = card.raw_cnn_output or {}
         if raw.get("confidence_str") == "foreign":
             return "not this game -> other-game pile"
-        if card.confidence < config.CNN_CONFIDENCE_THRESHOLD:
+        low = card.confidence < config.CNN_CONFIDENCE_THRESHOLD
+        if low and not self._tier_known(card):
             return f"low confidence ({raw.get('confidence_str', '?')}) -> review"
         tier = self.tier_of(card)
         idx = self._tier_index(tier)
         if idx is None:
             return f"{self.mode} '{tier or 'unknown'}' not in tier list -> bulk row"
+        if low:
+            return f"{self.mode} '{tier}' (printing uncertain) -> row {cell[0]}"
         return f"{self.mode} '{tier}' -> row {cell[0]}"

@@ -126,5 +126,6 @@ def card_data_from_result(res: dict):
             "rarity": res.get("rarity", ""),
             "game": res.get("game", ""),
             "ms": res.get("ms", 0),
+            "candidates": res.get("candidates", []),
         },
     )

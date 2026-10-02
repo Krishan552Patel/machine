@@ -233,13 +233,11 @@ class SortSession(threading.Thread):
             moves.append({"x": x, "y": y, "dur": round(rec.duration_s, 3)})
         self.grid.place_card(*cell, card)
 
-        conf_str = (card.raw_cnn_output or {}).get("confidence_str")
-        if conf_str == "foreign":
-            self.stats["other_game"] += 1
-        elif card.confidence < config.CNN_CONFIDENCE_THRESHOLD:
-            self.stats["review"] += 1
-        else:
-            self.stats["sorted"] += 1
+        # Count by the sort decision (a low-confidence card whose rarity/type
+        # is still certain lands in a tier, not review).
+        kind = (self.sorter.placement_kind(card)
+                if hasattr(self.sorter, "placement_kind") else "sorted")
+        self.stats[{"other": "other_game", "review": "review"}.get(kind, "sorted")] += 1
         self.emit("sort", key=res.get("key", ""), name=card.name,
                   cell=list(cell), reason=reason, moves=moves,
                   rarity=card.rarity, type_line=res.get("type_line", ""))
