@@ -6,164 +6,272 @@
 <title>Card Sorter</title>
 <style>
   :root {
-    --bg: #14171c; --panel: #1d2129; --line: #2e343f;
-    --ink: #e5e9ef; --muted: #8b95a3; --accent: #d9a13c;
+    --bg: #0f1216; --panel: #191d24; --panel-2: #20252e; --line: #2b313b;
+    --ink: #e7ebf1; --muted: #8b95a3; --faint: #5c6673;
+    --accent: #e0a94a; --accent-ink: #1a1304;
     --good: #4fc06f; --warn: #e0b23e; --bad: #d9605a; --info: #5b9dd9;
+    --radius: 10px;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
-  .mono { font-family: ui-monospace, Consolas, monospace; }
-  header { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: end;
-           padding: .8rem 1rem; background: var(--panel);
-           border-bottom: 1px solid var(--line); }
-  header h1 { font-size: 1rem; margin: 0 1rem 0 0; color: var(--accent);
-              align-self: center; letter-spacing: .04em; }
-  label.f { display: flex; flex-direction: column; gap: 2px;
-            font-size: .72rem; color: var(--muted); text-transform: uppercase;
-            letter-spacing: .06em; }
-  select, input { background: var(--bg); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 4px; padding: .35rem .5rem;
-    font: inherit; min-width: 7rem; }
-  button { border: 0; border-radius: 4px; padding: .45rem 1.1rem;
-    font: inherit; font-weight: 600; cursor: pointer; }
-  #btn-start { background: var(--good); color: #10231a; }
-  #btn-stop  { background: var(--bad); color: #2a1210; }
-  #btn-pause { background: var(--line); color: var(--ink); }
-  button:disabled { opacity: .4; cursor: default; }
-  #state { margin-left: auto; align-self: center; font-weight: 600; }
-  main { display: grid; grid-template-columns: 400px 1fr;
-         gap: 1rem; padding: 1rem; max-width: 1500px; margin: 0 auto; }
-  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+         font: 14px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  h1, h2, h3 { margin: 0; }
+  a { color: var(--info); }
+
+  /* ── top bar ───────────────────────────────────────────────────── */
+  header { display: flex; align-items: center; gap: .9rem;
+    padding: .7rem 1.1rem; background: var(--panel);
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+  .logo { display: flex; align-items: center; gap: .55rem; }
+  .logo .dot { width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .logo h1 { font-size: 1.02rem; letter-spacing: .02em; }
+  .logo span { color: var(--muted); font-size: .76rem; }
+  .pill { margin-left: .4rem; display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .76rem; font-weight: 600; padding: .25rem .6rem; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+  .pill .ind { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .pill.run .ind { background: var(--good); box-shadow: 0 0 8px var(--good); }
+  .pill.run { color: var(--good); }
+  .pill.err .ind { background: var(--bad); } .pill.err { color: var(--bad); }
+  .pill.load .ind { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .topbtns { margin-left: auto; display: flex; gap: .5rem; }
+  button { border: 0; border-radius: 7px; padding: .5rem 1rem; font: inherit;
+    font-weight: 600; cursor: pointer; transition: filter .12s, opacity .12s; }
+  button:hover:not(:disabled) { filter: brightness(1.12); }
+  button:disabled { opacity: .35; cursor: default; }
+  .btn-primary { background: var(--good); color: #0c2015; }
+  .btn-ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+  .btn-danger { background: var(--panel-2); color: var(--bad); border: 1px solid var(--line); }
+
+  /* ── layout ────────────────────────────────────────────────────── */
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 1.1rem;
+    padding: 1.1rem; max-width: 1480px; margin: 0 auto; align-items: start; }
+  @media (max-width: 920px) { main { grid-template-columns: 1fr; } }
   .card { background: var(--panel); border: 1px solid var(--line);
-          border-radius: 8px; padding: .8rem; }
-  .card h2 { margin: 0 0 .6rem; font-size: .78rem; color: var(--muted);
-             text-transform: uppercase; letter-spacing: .08em; }
-  #panes { display: flex; gap: .6rem; }
-  .pane { flex: 1; text-align: center; }
-  .pane img { width: 100%; aspect-ratio: 63/88; object-fit: contain;
-              background: #000; border-radius: 4px; }
-  .pane .cap { font-size: .7rem; color: var(--muted); margin-top: .25rem; }
-  #id-name { font-size: 1.05rem; font-weight: 600; margin: .5rem 0 .1rem; }
-  #id-line { color: var(--muted); font-size: .85rem; }
-  .badge { display: inline-block; border-radius: 3px; padding: .05rem .45rem;
-           font-size: .72rem; font-weight: 700; margin-right: .35rem; }
-  .b-phash    { background: #1d4d2c; color: #7fe0a0; }
-  .b-features { background: #1d3a5c; color: #8fc4f4; }
-  .b-ocr      { background: #52401b; color: #f0cd7c; }
-  .b-foreign-bg { background: #4d2320; color: #f0a29c; }
-  .b-high { color: var(--good); } .b-low, .b-medium { color: var(--warn); }
-  .b-none, .b-foreign { color: var(--bad); }
-  #decision { margin-top: .5rem; font-size: .9rem; }
-  #history { list-style: none; margin: .4rem 0 0; padding: 0;
-             max-height: 220px; overflow-y: auto; font-size: .82rem; }
-  #history li { display: flex; gap: .5rem; padding: .2rem 0;
-                border-bottom: 1px solid var(--line); }
-  #history .t { color: var(--muted); min-width: 3.2rem; }
-  canvas { width: 100%; border-radius: 6px; background: #101318; }
-  #statbar { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: .8rem; }
-  .stat { min-width: 6.5rem; }
-  .stat b { display: block; font-size: 1.3rem;
-            font-variant-numeric: tabular-nums; }
-  .stat span { font-size: .7rem; color: var(--muted);
-               text-transform: uppercase; letter-spacing: .06em; }
-  #tiers { margin-top: .6rem; font-size: .78rem; color: var(--muted); }
-  #log { color: var(--muted); font-size: .78rem; margin-top: .5rem;
-         min-height: 1.2em; }
-  #backend { display: flex; flex-wrap: wrap; gap: .5rem; padding: .5rem 1rem;
-    background: var(--panel); border-bottom: 1px solid var(--line);
-    font-size: .74rem; }
-  .gchip { border: 1px solid var(--line); border-radius: 4px;
-    padding: .2rem .5rem; display: flex; gap: .4rem; align-items: center; }
-  .gchip b { color: var(--ink); } .gchip .caps { color: var(--muted); }
-  .cap-on { color: var(--good); } .cap-off { color: var(--muted); opacity: .5; }
+    border-radius: var(--radius); padding: 1rem 1.1rem; }
+  .card + .card { margin-top: 1.1rem; }
+  .card > h2 { font-size: .72rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .09em; display: flex; align-items: center; gap: .5rem;
+    margin-bottom: .85rem; }
+  .step-no { display: inline-flex; width: 1.3rem; height: 1.3rem; flex: none;
+    align-items: center; justify-content: center; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); font-size: .72rem;
+    font-weight: 700; }
+  .fieldlabel { font-size: .72rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; margin: 0 0 .35rem; display: block; }
+  .fieldlabel + .fieldlabel, .field + .field { margin-top: .9rem; }
+  select, input[type=text] { width: 100%; background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px; padding: .5rem .55rem; font: inherit; }
+  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .hint { font-size: .78rem; color: var(--muted); margin: .4rem 0 0; }
+  .hint.warn { color: var(--warn); }
+
+  /* segmented control */
+  .seg { display: flex; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; background: transparent; color: var(--muted);
+    padding: .4rem .3rem; font-size: .82rem; font-weight: 600; border-radius: 6px; }
+  .seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+  .seg.sm button { font-size: .78rem; padding: .35rem .2rem; }
+
+  #btn-start { width: 100%; margin-top: 1rem; padding: .7rem; font-size: .95rem; }
+  .run-row { display: flex; gap: .5rem; margin-top: .6rem; }
+  .run-row button { flex: 1; }
+
+  /* identification panel */
+  #panes { display: flex; gap: .7rem; }
+  .pane { flex: 1; }
+  .pane .frame { aspect-ratio: 63/88; background: #0b0e12; border: 1px solid var(--line);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; }
+  .pane .frame img { width: 100%; height: 100%; object-fit: contain; }
+  .pane .ph { color: var(--faint); font-size: .76rem; text-align: center; padding: .5rem; }
+  .pane .cap { font-size: .7rem; color: var(--muted); margin-top: .3rem; text-align: center; }
+  #id-name { font-size: 1.15rem; font-weight: 600; margin: .7rem 0 .15rem; }
+  #id-line { color: var(--muted); font-size: .86rem; }
+  #decision { margin-top: .55rem; font-size: .88rem; color: var(--ink); }
+  .empty { color: var(--faint); font-size: .86rem; padding: .5rem 0; }
+
+  .badge { display: inline-block; border-radius: 4px; padding: .08rem .5rem;
+    font-size: .7rem; font-weight: 700; margin-right: .4rem; letter-spacing: .02em; }
+  .b-phash { background: #16401f; color: #7fe0a0; }
+  .b-features { background: #16304d; color: #8fc4f4; }
+  .b-ocr { background: #463613; color: #f0cd7c; }
+  .b-foreign-bg { background: #461f1c; color: #f0a29c; }
+  .b-high { color: var(--good); font-weight: 600; }
+  .b-low, .b-medium { color: var(--warn); font-weight: 600; }
+  .b-none, .b-foreign { color: var(--bad); font-weight: 600; }
+
+  /* grid + stats */
+  canvas { width: 100%; border-radius: 8px; background: #0b0e12; display: block; }
+  #legend { display: flex; flex-wrap: wrap; gap: .5rem .9rem; margin-top: .7rem;
+    font-size: .74rem; color: var(--muted); }
+  #legend .lg { display: inline-flex; align-items: center; gap: .35rem; }
+  #legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+  #statbar { display: flex; flex-wrap: wrap; gap: 1.6rem; margin-top: 1rem;
+    padding-top: .9rem; border-top: 1px solid var(--line); }
+  .stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums;
+    line-height: 1.1; }
+  .stat.good b { color: var(--good); } .stat.warn b { color: var(--warn); }
+  .stat span { font-size: .68rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; }
+  #tiers { margin-top: .6rem; font-size: .76rem; color: var(--faint); }
+  #log { color: var(--muted); font-size: .78rem; margin-top: .7rem; min-height: 1.2em; }
+
+  #history { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+  #history li { display: grid; grid-template-columns: 3.4rem 1fr auto; gap: .5rem;
+    padding: .32rem 0; border-bottom: 1px solid var(--line); font-size: .82rem; }
+  #history .t { color: var(--faint); } #history .r { color: var(--muted); font-size: .76rem; }
+
+  /* backend bar */
+  #backend { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+  .gchip { border: 1px solid var(--line); border-radius: 7px; padding: .3rem .55rem;
+    display: flex; flex-direction: column; gap: .1rem; background: var(--bg); min-width: 0; }
+  .gchip .gn { font-weight: 600; font-size: .82rem; text-transform: capitalize; }
+  .gchip .gm { font-size: .68rem; color: var(--muted); }
+  .cap-on { color: var(--good); } .cap-off { color: var(--faint); }
+
+  /* quick test */
+  #drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 1rem;
+    text-align: center; color: var(--muted); font-size: .84rem; cursor: pointer;
+    transition: border-color .12s, background .12s; }
+  #drop:hover, #drop.over { border-color: var(--accent); background: var(--panel-2); color: var(--ink); }
+  #test-result { margin-top: .7rem; font-size: .86rem; }
 </style>
 </head>
 <body>
 <header>
-  <h1>CARD SORTER</h1>
-  <label class="f">game
-    <select id="game">
-      <option value="riftbound">Riftbound</option>
-      <option value="magic">Magic</option>
-      <option value="pokemon">Pokemon</option>
-      <option value="fab">Flesh and Blood</option>
-    </select></label>
-  <label class="f">sort by
-    <select id="mode">
-      <option value="rarity">Rarity</option>
-      <option value="type">Type</option>
-    </select></label>
-  <label class="f">source
-    <select id="source">
-      <option value="phone">Phone camera</option>
-      <option value="folder">Folder</option>
-    </select></label>
-  <label class="f" id="f-ip">phone ip
-    <input id="ip" value="192.168.103.11" size="13"></label>
-  <label class="f" id="f-folder" style="display:none">folder
-    <input id="folder" size="28"
-      value="C:\Users\kuro\fab-card-id\debug_captures"></label>
-  <label class="f">grid
-    <select id="gridsize">
-      <option value="6x4">6 x 4</option><option value="4x4">4 x 4</option>
-      <option value="6x6">6 x 6</option><option value="8x6">8 x 6</option>
-    </select></label>
-  <label class="f">accuracy
-    <select id="accuracy">
-      <option value="auto">Auto (image + collector OCR)</option>
-      <option value="fast">Fast (image only)</option>
-      <option value="max">Max (full OCR, slowest)</option>
-    </select></label>
-  <button id="btn-start">Start</button>
-  <button id="btn-pause" disabled>Pause</button>
-  <button id="btn-stop" disabled>Stop</button>
-  <span id="state">idle</span>
+  <div class="logo">
+    <span class="dot"></span>
+    <h1>Card Sorter</h1>
+    <span>multi-game identify &amp; sort</span>
+  </div>
+  <span class="pill" id="statuspill"><span class="ind"></span><span id="state">idle</span></span>
+  <div class="topbtns">
+    <button id="btn-pause" class="btn-ghost" disabled>Pause</button>
+    <button id="btn-stop" class="btn-danger" disabled>Stop</button>
+  </div>
 </header>
-<div id="backend" title="fab-card-id backend data readiness"></div>
 
 <main>
+  <!-- ── SIDEBAR: setup ────────────────────────────────────────── -->
   <section>
     <div class="card">
-      <h2>Identification</h2>
-      <div id="panes">
-        <div class="pane"><img id="img-crop" alt="camera crop">
-          <div class="cap">camera crop</div></div>
-        <div class="pane"><img id="img-ref" alt="reference">
-          <div class="cap">matched reference</div></div>
+      <h2><span class="step-no">1</span> What to scan</h2>
+
+      <label class="fieldlabel" for="game">Card game</label>
+      <select id="game">
+        <option value="riftbound">Riftbound</option>
+        <option value="magic">Magic: The Gathering</option>
+        <option value="pokemon">Pokémon</option>
+        <option value="fab">Flesh and Blood</option>
+      </select>
+      <p class="hint" id="game-hint">&nbsp;</p>
+
+      <label class="fieldlabel" style="margin-top:.9rem">Card source</label>
+      <div class="seg" id="seg-source">
+        <button data-v="phone" aria-pressed="true">Phone camera</button>
+        <button data-v="folder">Image folder</button>
       </div>
-      <div id="id-name">—</div>
-      <div id="id-line"></div>
-      <div id="decision"></div>
+      <div id="src-phone" style="margin-top:.7rem">
+        <input type="text" id="ip" value="192.168.103.11" placeholder="phone IP, e.g. 192.168.1.55">
+        <p class="hint">Start the <b>IP Webcam</b> app on your phone, tap “Start server”,
+          and enter the IP it shows. Hold cards up to the camera.</p>
+      </div>
+      <div id="src-folder" style="margin-top:.7rem; display:none">
+        <input type="text" id="folder" value="C:\Users\kuro\fab-card-id\debug_captures">
+        <p class="hint">Full path to a folder of card images — replays them as if scanned.</p>
+      </div>
     </div>
-    <div class="card" style="margin-top:1rem">
-      <h2>Test a single card</h2>
-      <p style="color:var(--muted);font-size:.82rem;margin:.1rem 0 .5rem">
-        Identify one image without running a sort — for testing + timing.</p>
-      <input type="file" id="test-file" accept="image/*"
-        style="font-size:.8rem;width:100%">
-      <div id="test-result" style="margin-top:.5rem;font-size:.85rem"></div>
+
+    <div class="card">
+      <h2><span class="step-no">2</span> How to sort</h2>
+      <label class="fieldlabel">Sort cards by</label>
+      <div class="seg" id="seg-mode">
+        <button data-v="rarity" aria-pressed="true">Rarity</button>
+        <button data-v="type">Card type</button>
+      </div>
+      <label class="fieldlabel" style="margin-top:.9rem" for="gridsize">Bin grid size</label>
+      <select id="gridsize">
+        <option value="6x4">6 rows × 4 cols — 24 bins</option>
+        <option value="4x4">4 rows × 4 cols — 16 bins</option>
+        <option value="6x6">6 rows × 6 cols — 36 bins</option>
+        <option value="8x6">8 rows × 6 cols — 48 bins</option>
+      </select>
+      <p class="hint">Each rarity (or type) fills one row; low-confidence cards go to the
+        <b style="color:var(--bad)">review</b> bin, wrong-game cards to the
+        <b style="color:var(--muted)">other-game</b> bin.</p>
     </div>
-    <div class="card" style="margin-top:1rem">
-      <h2>History</h2>
-      <ul id="history"></ul>
+
+    <div class="card">
+      <h2><span class="step-no">3</span> Speed vs. accuracy</h2>
+      <div class="seg sm" id="seg-accuracy">
+        <button data-v="auto" aria-pressed="true">Auto</button>
+        <button data-v="fast">Fast</button>
+        <button data-v="max">Max</button>
+      </div>
+      <p class="hint" id="acc-hint">&nbsp;</p>
+      <button id="btn-start" class="btn-primary">▶  Start sorting</button>
+    </div>
+
+    <div class="card">
+      <h2>Quick test — identify one card</h2>
+      <div id="drop">Drop a card image here, or click to choose<br>
+        <span style="font-size:.76rem;color:var(--faint)">no sort needed — just checks identification + timing</span></div>
+      <input type="file" id="test-file" accept="image/*" hidden>
+      <div id="test-result"></div>
     </div>
   </section>
 
+  <!-- ── CONTENT: live view ────────────────────────────────────── -->
   <section>
     <div class="card">
-      <h2>Grid + gantry</h2>
-      <canvas id="cv" width="1000" height="640"></canvas>
+      <h2>Now identifying</h2>
+      <div id="panes">
+        <div class="pane">
+          <div class="frame"><img id="img-crop" alt="" style="display:none">
+            <span class="ph" id="crop-ph">camera / card crop<br>appears here</span></div>
+          <div class="cap">what the camera sees</div>
+        </div>
+        <div class="pane">
+          <div class="frame"><img id="img-ref" alt="" style="display:none">
+            <span class="ph" id="ref-ph">matched<br>reference card</span></div>
+          <div class="cap">closest catalog match</div>
+        </div>
+      </div>
+      <div id="id-name" class="empty">Waiting to start…</div>
+      <div id="id-line"></div>
+      <div id="decision"></div>
+    </div>
+
+    <div class="card">
+      <h2>Sorting bins</h2>
+      <canvas id="cv" width="1000" height="620"></canvas>
+      <div id="legend"></div>
       <div id="tiers"></div>
       <div id="statbar">
-        <div class="stat"><b id="s-sorted">0</b><span>sorted</span></div>
-        <div class="stat"><b id="s-review">0</b><span>review</span></div>
+        <div class="stat good"><b id="s-sorted">0</b><span>sorted</span></div>
+        <div class="stat warn"><b id="s-review">0</b><span>review</span></div>
         <div class="stat"><b id="s-other">0</b><span>other game</span></div>
         <div class="stat"><b id="s-cph">0</b><span>cards / hour</span></div>
         <div class="stat"><b id="s-travel">0</b><span>travel mm</span></div>
         <div class="stat"><b id="s-simt">0</b><span>sim time s</span></div>
       </div>
       <div id="log"></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent cards</h2>
+      <ul id="history"></ul>
+      <div class="empty" id="hist-empty">Sorted cards will appear here.</div>
+    </div>
+
+    <div class="card">
+      <h2>Backend data (fab-card-id)</h2>
+      <div id="backend"><span class="empty">checking…</span></div>
     </div>
   </section>
 </main>
@@ -172,22 +280,43 @@
 "use strict";
 const $ = id => document.getElementById(id);
 
-// ── controls ────────────────────────────────────────────────────────────
-$("source").onchange = () => {
-  const phone = $("source").value === "phone";
-  $("f-ip").style.display = phone ? "" : "none";
-  $("f-folder").style.display = phone ? "none" : "";
+// ── segmented controls ─────────────────────────────────────────────────
+function seg(groupId, onChange) {
+  const g = $(groupId);
+  let val = g.querySelector("[aria-pressed=true]").dataset.v;
+  g.querySelectorAll("button").forEach(b => b.onclick = () => {
+    g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", "true");
+    val = b.dataset.v;
+    onChange && onChange(val);
+  });
+  return { get value() { return val; } };
+}
+const SOURCE = seg("seg-source", v => {
+  $("src-phone").style.display = v === "phone" ? "" : "none";
+  $("src-folder").style.display = v === "folder" ? "" : "none";
+});
+const MODE = seg("seg-mode");
+const ACCURACY = seg("seg-accuracy", updateAccHint);
+const ACC_TEXT = {
+  auto: "Image match first (~0.2–0.5 s); reads the collector number only when needed. Best all-round.",
+  fast: "Image match only (~0.2 s). Fastest, but can’t read cards it has no reference image for.",
+  max: "Full text reading as well — slowest, best for hard/old cards.",
 };
+function updateAccHint() { $("acc-hint").innerHTML = ACC_TEXT[ACCURACY.value]; }
+updateAccHint();
+
 async function post(path, body) {
-  await fetch(path, {method: "POST", body: JSON.stringify(body || {})});
+  try { await fetch(path, {method: "POST", body: JSON.stringify(body || {})}); }
+  catch (e) {}
 }
 $("btn-start").onclick = () => {
   const [rows, cols] = $("gridsize").value.split("x").map(Number);
+  $("hist-empty").style.display = "none";
   post("/api/start", {
-    game: $("game").value, mode: $("mode").value,
-    source: $("source").value, ip: $("ip").value,
-    folder: $("folder").value, rows, cols,
-    accuracy: $("accuracy").value,
+    game: $("game").value, mode: MODE.value, source: SOURCE.value,
+    ip: $("ip").value, folder: $("folder").value, rows, cols,
+    accuracy: ACCURACY.value, fixed_orientation: SOURCE.value === "phone",
   });
 };
 $("btn-stop").onclick = () => post("/api/stop");
@@ -198,12 +327,24 @@ $("btn-pause").onclick = () => {
   post("/api/pause", {paused});
 };
 
+// ── badges ──────────────────────────────────────────────────────────────
+const METHOD_NAME = {phash: "IMAGE MATCH", features: "KEYPOINTS",
+  phash_foreign: "WRONG GAME", collector_ocr: "COLLECTOR #", name_ocr: "CARD NAME"};
+const badges = m => {
+  const cls = m.confidence === "foreign" ? "b-foreign-bg"
+    : m.method === "phash" ? "b-phash"
+    : m.method === "features" ? "b-features" : "b-ocr";
+  const name = METHOD_NAME[m.method] || (m.method || "?").toUpperCase();
+  return `<span class="badge ${cls}">${name}</span>` +
+    `<span class="b-${m.confidence}">${m.confidence}</span>` +
+    ` <span class="mono" style="color:var(--muted)">${m.detail || ""} · ${m.ms} ms</span>`;
+};
+
 // ── grid rendering ──────────────────────────────────────────────────────
 const cv = $("cv"), ctx = cv.getContext("2d");
 let G = {rows: 6, cols: 4, cells: [], review_cell: [0, 3], other_cell: [5, 3]};
 let TIERS = [];
-let head = {x: 0.05, y: 0.05, tx: 0.05, ty: 0.05, t0: 0, dur: 0,
-            sx: 0.05, sy: 0.05};
+let head = {tx: .05, ty: .05, sx: .05, sy: .05, t0: 0, dur: 0};
 const RCOLORS = {showcase: "#b46ee0", promo: "#e0a13c", epic: "#d9605a",
   rare: "#5b9dd9", uncommon: "#4fc06f", common: "#8b95a3",
   mythic: "#e0793c", special: "#b46ee0", bonus: "#b46ee0",
@@ -211,21 +352,18 @@ const RCOLORS = {showcase: "#b46ee0", promo: "#e0a13c", epic: "#d9605a",
   r: "#5b9dd9", c: "#8b95a3", t: "#6a7280"};
 
 function cellRect(r, c) {
-  const pad = 46, W = cv.width - pad * 2, H = cv.height - pad * 2;
+  const pad = 44, W = cv.width - pad * 2, H = cv.height - pad * 2;
   const cw = W / G.cols, ch = H / G.rows;
   return [pad + c * cw + 3, pad + r * ch + 3, cw - 6, ch - 6];
 }
 function draw(now) {
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.font = "12px Consolas, monospace";
-  // tier labels on the left
   for (let r = 0; r < G.rows; r++) {
-    const [x, y, , h] = cellRect(r, 0);
-    ctx.fillStyle = "#8b95a3";
-    ctx.save();
-    ctx.translate(14, y + h / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center";
-    ctx.fillText((TIERS[r] || (r === G.rows - 1 ? "bulk" : "")).slice(0, 12), 0, 0);
+    const [, y, , h] = cellRect(r, 0);
+    ctx.fillStyle = "#8b95a3"; ctx.save();
+    ctx.translate(13, y + h / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center";
+    ctx.fillText((TIERS[r] || (r === G.rows - 1 ? "other / bulk" : "")).slice(0, 13), 0, 0);
     ctx.restore();
   }
   const byRC = {};
@@ -235,159 +373,170 @@ function draw(now) {
     const cell = byRC[r + "," + c] || {n: 0, names: [], rarity: ""};
     const isReview = r === G.review_cell[0] && c === G.review_cell[1];
     const isOther = r === G.other_cell[0] && c === G.other_cell[1];
-    ctx.fillStyle = cell.n ? "#232936" : "#181c23";
-    ctx.strokeStyle = isReview ? "#d9605a" : isOther ? "#8b95a3" : "#2e343f";
+    ctx.fillStyle = cell.n ? "#20252e" : "#13171d";
+    ctx.strokeStyle = isReview ? "#d9605a" : isOther ? "#5c6673" : "#2b313b";
     ctx.lineWidth = (isReview || isOther) ? 2 : 1;
-    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 7); ctx.fill(); ctx.stroke();
     if (isReview || isOther) {
-      ctx.fillStyle = isReview ? "#d9605a" : "#8b95a3";
-      ctx.fillText(isReview ? "REVIEW" : "OTHER GAME", x + 6, y + 14);
+      ctx.fillStyle = isReview ? "#d9605a" : "#8b95a3"; ctx.textAlign = "left";
+      ctx.fillText(isReview ? "REVIEW" : "OTHER GAME", x + 7, y + 15);
     }
     if (cell.n) {
       const col = RCOLORS[(cell.rarity || "").toLowerCase()] || "#e5e9ef";
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(x + w - 16, y + 16, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + w - 16, y + 16, 9, 0, 7); ctx.fill();
       ctx.fillStyle = "#10131a"; ctx.textAlign = "center";
       ctx.fillText(cell.n, x + w - 16, y + 20); ctx.textAlign = "left";
-      ctx.fillStyle = "#e5e9ef";
+      ctx.fillStyle = "#cfd6df";
       cell.names.slice(-2).forEach((n, i) =>
-        ctx.fillText(n.slice(0, Math.floor(w / 7.2)), x + 6, y + h - 22 + i * 14));
+        ctx.fillText(n.slice(0, Math.floor(w / 7.2)), x + 7, y + h - 22 + i * 14));
     }
   }
-  // gantry head (animated between stack and target)
   let hx = head.tx, hy = head.ty;
   if (head.dur > 0) {
     const f = Math.min(1, (now - head.t0) / (head.dur * 1000));
-    hx = head.sx + (head.tx - head.sx) * f;
-    hy = head.sy + (head.ty - head.sy) * f;
+    hx = head.sx + (head.tx - head.sx) * f; hy = head.sy + (head.ty - head.sy) * f;
   }
-  ctx.strokeStyle = "#d9a13c"; ctx.lineWidth = 1;
-  const px = 46 + hx * (cv.width - 92), py = 46 + hy * (cv.height - 92);
-  ctx.beginPath(); ctx.moveTo(px, 8); ctx.lineTo(px, cv.height - 8);
-  ctx.moveTo(8, py); ctx.lineTo(cv.width - 8, py); ctx.stroke();
-  ctx.fillStyle = "#d9a13c";
-  ctx.beginPath(); ctx.arc(px, py, 7, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(224,169,74,.6)"; ctx.lineWidth = 1;
+  const px = 44 + hx * (cv.width - 88), py = 44 + hy * (cv.height - 88);
+  ctx.beginPath(); ctx.moveTo(px, 6); ctx.lineTo(px, cv.height - 6);
+  ctx.moveTo(6, py); ctx.lineTo(cv.width - 6, py); ctx.stroke();
+  ctx.fillStyle = "#e0a94a"; ctx.beginPath(); ctx.arc(px, py, 7, 0, 7); ctx.fill();
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
-
 function moveHeadToCell(r, c, dur) {
   const [x, y, w, h] = cellRect(r, c);
   head.sx = head.tx; head.sy = head.ty;
-  head.tx = (x + w / 2 - 46) / (cv.width - 92);
-  head.ty = (y + h / 2 - 46) / (cv.height - 92);
+  head.tx = (x + w / 2 - 44) / (cv.width - 88);
+  head.ty = (y + h / 2 - 44) / (cv.height - 88);
   head.t0 = performance.now(); head.dur = dur || 0.5;
 }
-
-// ── event stream ────────────────────────────────────────────────────────
-const badges = m => {
-  const cls = m.confidence === "foreign" ? "b-foreign-bg"
-            : m.method === "phash" ? "b-phash"
-            : m.method === "features" ? "b-features" : "b-ocr";
-  const mName = {phash: "IMAGE HASH", features: "KEYPOINTS",
-                 phash_foreign: "WRONG GAME",
-                 collector_ocr: "COLLECTOR OCR", name_ocr: "NAME OCR"}[m.method]
-                 || (m.method || "?").toUpperCase();
-  return `<span class="badge ${cls}">${mName}</span>` +
-    `<span class="b-${m.confidence}">${m.confidence}</span>` +
-    ` <span class="mono">${m.detail || ""} · ${m.ms} ms</span>`;
-};
+function drawLegend() {
+  const tiers = TIERS.length ? TIERS : [];
+  const items = tiers.map(t => {
+    const col = RCOLORS[t.toLowerCase()] || "#cfd6df";
+    return `<span class="lg"><span class="sw" style="background:${col}"></span>${t}</span>`;
+  });
+  items.push(`<span class="lg"><span class="sw" style="background:#d9605a"></span>review</span>`);
+  items.push(`<span class="lg"><span class="sw" style="background:#5c6673"></span>other game</span>`);
+  $("legend").innerHTML = items.join("");
+}
 
 // ── backend readiness ───────────────────────────────────────────────────
 async function loadStatus() {
   try {
     const st = await (await fetch("/api/status")).json();
-    if (!st.ok) { $("backend").textContent = "backend: " + (st.error||"?"); return; }
-    $("backend").innerHTML = "<span style='color:var(--muted)'>backend @ " +
-      st.card_data_root + "</span>" +
-      Object.entries(st.games).map(([g, i]) => {
-        const img = i.image_fast_path
-          ? `<span class='cap-on'>image${i.orb?"+ORB":""}</span>` : "<span class='cap-off'>image</span>";
-        const ocr = i.ocr_path ? "<span class='cap-on'>OCR</span>" : "<span class='cap-off'>OCR</span>";
-        return `<span class='gchip'><b>${g}</b> ${i.index.toLocaleString()} cards` +
-          `<span class='caps'>${img} ${ocr}</span></span>`;
-      }).join("");
-  } catch (e) { $("backend").textContent = "backend unavailable"; }
+    if (!st.ok) { $("backend").innerHTML = "<span class='empty'>backend: " + (st.error || "?") + "</span>"; return; }
+    window.GAMES = st.games;
+    $("backend").innerHTML = Object.entries(st.games).map(([g, i]) => {
+      const img = i.image_fast_path ? `<span class='cap-on'>image${i.orb ? "+ORB" : ""}</span>` : `<span class='cap-off'>image</span>`;
+      const ocr = i.ocr_path ? `<span class='cap-on'>text</span>` : `<span class='cap-off'>text</span>`;
+      return `<span class='gchip'><span class='gn'>${g}</span>` +
+        `<span class='gm'>${i.index.toLocaleString()} cards · ${img} · ${ocr}</span></span>`;
+    }).join("");
+    updateGameHint();
+  } catch (e) { $("backend").innerHTML = "<span class='empty'>backend unavailable — is the server running?</span>"; }
 }
+function updateGameHint() {
+  const g = window.GAMES && window.GAMES[$("game").value];
+  if (!g) { $("game-hint").innerHTML = "&nbsp;"; return; }
+  const ways = [];
+  if (g.image_fast_path) ways.push("image match" + (g.orb ? " + keypoints" : ""));
+  if (g.ocr_path) ways.push("text reading");
+  $("game-hint").textContent = `${g.index.toLocaleString()} cards · identifies by ${ways.join(" & ") || "—"}`;
+}
+$("game").onchange = updateGameHint;
 loadStatus();
 
-// ── single-card test identify ───────────────────────────────────────────
-$("test-file").onchange = async () => {
-  const f = $("test-file").files[0];
-  if (!f) return;
-  $("test-result").innerHTML = "<span style='color:var(--muted)'>identifying…</span>";
+// ── quick test identify ─────────────────────────────────────────────────
+const drop = $("drop");
+drop.onclick = () => $("test-file").click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files[0]) testIdentify(e.dataTransfer.files[0]); };
+$("test-file").onchange = () => { if ($("test-file").files[0]) testIdentify($("test-file").files[0]); };
+
+async function testIdentify(file) {
+  $("test-result").innerHTML = "<span class='empty'>identifying… (first card for a game takes a few seconds)</span>";
   const b64 = await new Promise(res => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(",")[1]);
-    r.readAsDataURL(f);
+    const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.readAsDataURL(file);
   });
-  const r = await (await fetch("/api/test_identify", {method: "POST",
-    body: JSON.stringify({game: $("game").value, accuracy: $("accuracy").value,
-      jpeg_b64: b64, detect: true})})).json();
-  if (!r.ok) { $("test-result").textContent = r.error || "error"; return; }
+  let r;
+  try {
+    r = await (await fetch("/api/test_identify", {method: "POST",
+      body: JSON.stringify({game: $("game").value, accuracy: ACCURACY.value, jpeg_b64: b64, detect: true})})).json();
+  } catch (e) { $("test-result").innerHTML = "<span class='b-none'>request failed</span>"; return; }
+  if (!r.ok) { $("test-result").innerHTML = "<span class='b-none'>" + (r.error || "error") + "</span>"; return; }
   if (!r.found) {
-    $("test-result").innerHTML = `<span class='b-none'>no match</span> ` +
-      `<span class='mono'>${r.client_ms} ms</span>`;
+    $("test-result").innerHTML = `<span class="b-none">no match</span> <span class="mono" style="color:var(--muted)">${r.client_ms} ms</span>`;
     return;
   }
   $("test-result").innerHTML =
-    `<b>${r.name}</b> <span class='mono'>${(r.set||"").toUpperCase()} ${r.collector}</span><br>` +
-    `${r.rarity||"?"} · ${r.type_line||"?"} · ` + badges(r) +
-    `<br><span class='mono' style='color:var(--muted)'>round-trip ${r.client_ms} ms</span>`;
-};
+    `<b>${r.name}</b> <span class="mono" style="color:var(--muted)">${(r.set || "").toUpperCase()} ${r.collector}</span><br>` +
+    `<span style="color:var(--muted)">${r.rarity || "?"} · ${r.type_line || "?"}</span><br>` + badges(r) +
+    `<br><span class="mono" style="color:var(--faint)">round-trip ${r.client_ms} ms</span>`;
+}
 
+// ── live event stream ───────────────────────────────────────────────────
+function setState(label, cls) {
+  $("state").textContent = label;
+  $("statuspill").className = "pill" + (cls ? " " + cls : "");
+}
 const es = new EventSource("/events");
+es.onopen = () => { if ($("state").textContent === "idle") setState("ready", ""); };
+es.onerror = () => setState("disconnected", "err");
 es.onmessage = e => {
   const ev = JSON.parse(e.data);
   if (ev.type === "session") {
-    $("state").textContent = ev.state + (ev.error ? ": " + ev.error : "");
-    $("state").style.color = ev.state === "running" ? "var(--good)"
-      : ev.state === "error" ? "var(--bad)" : "var(--muted)";
-    const running = ev.state === "running" || ev.state === "loading";
-    $("btn-stop").disabled = !running; $("btn-pause").disabled = !running;
+    const map = {running: ["running", "run"], loading: ["loading…", "load"],
+      stopped: ["stopped", ""], error: ["error", "err"]};
+    const [lbl, cls] = map[ev.state] || [ev.state, ""];
+    setState(ev.error ? "error: " + ev.error : lbl, cls);
+    const active = ev.state === "running" || ev.state === "loading";
+    $("btn-stop").disabled = !active; $("btn-pause").disabled = !active;
+    $("btn-start").disabled = active;
+    if (ev.state === "loading") $("id-name").textContent = "Loading " + (ev.game || "") + " card data…";
     if (ev.tiers) {
-      TIERS = ev.tiers;
+      TIERS = ev.tiers; drawLegend();
       $("tiers").textContent = ev.tiers.length
-        ? `rows (top to bottom): ${ev.tiers.join(" · ")} — unknown -> bottom row`
-        : "no tier data for this game — everything lands on the bottom row";
+        ? "rows top→bottom: " + ev.tiers.join(" · ") + "  (unknown → bottom row)"
+        : "this game has no rarity data yet — everything lands on the bottom row";
     }
   } else if (ev.type === "identify") {
-    if (ev.crop_b64) $("img-crop").src = "data:image/jpeg;base64," + ev.crop_b64;
-    $("img-ref").src = ev.ref_image ? "/ref?p=" + encodeURIComponent(ev.ref_image) : "";
+    const crop = $("img-crop"), ref = $("img-ref");
+    if (ev.crop_b64) { crop.src = "data:image/jpeg;base64," + ev.crop_b64; crop.style.display = ""; $("crop-ph").style.display = "none"; }
+    if (ev.ref_image) { ref.src = "/ref?p=" + encodeURIComponent(ev.ref_image); ref.style.display = ""; $("ref-ph").style.display = "none"; }
+    else { ref.style.display = "none"; $("ref-ph").style.display = ""; $("ref-ph").innerHTML = "no reference<br>image"; }
+    $("id-name").classList.remove("empty");
     if (ev.found) {
       $("id-name").textContent = ev.name;
-      $("id-line").innerHTML =
-        `${(ev.set || "").toUpperCase()} ${ev.collector} · ` +
-        `${ev.rarity || "?"} · ${ev.type_line || "?"}<br>` + badges(ev);
+      $("id-line").innerHTML = `${(ev.set || "").toUpperCase()} ${ev.collector} · ${ev.rarity || "?"} · ${ev.type_line || "?"}<br>` + badges(ev);
     } else {
       $("id-name").textContent = "no match";
-      $("id-line").innerHTML = `<span class="b-none">none</span> ` +
-        `<span class="mono">${ev.ms} ms · crop=${ev.crop_how}</span>`;
+      $("id-line").innerHTML = `<span class="b-none">none</span> <span class="mono" style="color:var(--muted)">${ev.ms} ms · ${ev.crop_how}</span>`;
       $("decision").textContent = "";
     }
   } else if (ev.type === "sort") {
-    $("decision").textContent = `-> cell [${ev.cell}]  (${ev.reason})`;
-    moveHeadToCell(ev.cell[0], ev.cell[1],
-                   ev.moves && ev.moves[1] ? ev.moves[1].dur : 0.5);
+    const nice = ev.reason;
+    $("decision").innerHTML = `→ <b>${TIERS[ev.cell[0]] || "bin"}</b> row &nbsp;<span style="color:var(--muted)">${nice}</span>`;
+    moveHeadToCell(ev.cell[0], ev.cell[1], ev.moves && ev.moves[1] ? ev.moves[1].dur : 0.5);
     const li = document.createElement("li");
-    li.innerHTML = `<span class="t mono">${new Date().toLocaleTimeString(
-      [], {hour12: false})}</span><span>${ev.name}</span>` +
-      `<span class="mono" style="color:var(--muted)">[${ev.cell}] ${ev.reason}</span>`;
+    li.innerHTML = `<span class="t mono">${new Date().toLocaleTimeString([], {hour12: false})}</span>` +
+      `<span>${ev.name}</span><span class="r">${TIERS[ev.cell[0]] || ("row " + ev.cell[0])}</span>`;
     $("history").prepend(li);
-    while ($("history").children.length > 60) $("history").lastChild.remove();
+    while ($("history").children.length > 80) $("history").lastChild.remove();
   } else if (ev.type === "grid") {
     G = ev;
   } else if (ev.type === "stats") {
-    $("s-sorted").textContent = ev.sorted;
-    $("s-review").textContent = ev.review;
-    $("s-other").textContent = ev.other_game;
-    $("s-cph").textContent = ev.cards_per_hour;
-    $("s-travel").textContent = ev.travel_mm;
-    $("s-simt").textContent = ev.sim_time_s;
+    $("s-sorted").textContent = ev.sorted; $("s-review").textContent = ev.review;
+    $("s-other").textContent = ev.other_game; $("s-cph").textContent = ev.cards_per_hour;
+    $("s-travel").textContent = ev.travel_mm; $("s-simt").textContent = ev.sim_time_s;
   } else if (ev.type === "status") {
     $("log").textContent = ev.msg;
   }
 };
+drawLegend();
 </script>
 </body>
 </html>
