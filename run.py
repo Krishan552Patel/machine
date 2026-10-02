@@ -241,21 +241,41 @@ def show_help():
     main_menu()
 
 
+def launch_web_ui():
+    """Start the browser control panel — the full front-end for live
+    multi-game identification + sorting, backed by fab-card-id."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    fab_py = os.path.join(here, "..", "fab-card-id", ".venv", "Scripts", "python.exe")
+    py = fab_py if os.path.exists(fab_py) else sys.executable
+    print(f"\n{BOLD}{CYAN}  Launching the web control panel…{RESET}")
+    print(f"  Open {BOLD}http://127.0.0.1:8765{RESET} in your browser.")
+    print(f"  {DIM}Pick game / sort-by / source / accuracy, watch each card get")
+    print(f"  identified live, and sort. Ctrl-C here to stop.{RESET}\n")
+    try:
+        subprocess.run([py, "-u", os.path.join(here, "ui_server.py")])
+    except KeyboardInterrupt:
+        pass
+
+
 def main_menu():
     header()
     section("Main Menu")
-    option("1", "Quick Run          ", "4×4 grid, all cards, by_rarity_and_set (recommended start)")
-    option("2", "Custom Run         ", "choose grid, strategy, card count, and options")
-    option("3", "Headless / No GUI  ", "run without matplotlib — fastest, prints to terminal")
-    option("4", "Show all options   ", "explain every flag, strategy, and rarity")
-    option("5", "Exit               ", "")
+    option("1", "Web Control Panel  ", "browser UI — live camera ID + multi-game sort (recommended)")
+    option("2", "Quick Run (sim)    ", "4×4 grid, sample deck, matplotlib — no camera")
+    option("3", "Custom Run (sim)   ", "choose grid, strategy, card count, and options")
+    option("4", "Headless / No GUI  ", "run without matplotlib — fastest, prints to terminal")
+    option("5", "Show all options   ", "explain every flag, strategy, and rarity")
+    option("6", "Exit               ", "")
 
-    choice = prompt("Choose 1–5", "1")
+    choice = prompt("Choose 1–6", "1")
 
     if choice == "1":
-        confirm_and_run([])
+        launch_web_ui()
 
     elif choice == "2":
+        confirm_and_run([])
+
+    elif choice == "3":
         header()
         rows, cols = pick_grid()
 
@@ -317,7 +337,7 @@ def main_menu():
 
         confirm_and_run(args)
 
-    elif choice == "3":
+    elif choice == "4":
         header()
         rows, cols = pick_grid()
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -331,10 +351,10 @@ def main_menu():
             args.append(f"--cards {max_cards}")
         confirm_and_run(args)
 
-    elif choice == "4":
+    elif choice == "5":
         show_help()
 
-    elif choice == "5":
+    elif choice == "6":
         print(f"\n  {DIM}Goodbye.{RESET}\n")
         sys.exit(0)
 

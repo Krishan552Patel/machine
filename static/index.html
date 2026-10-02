@@ -70,6 +70,13 @@
   #tiers { margin-top: .6rem; font-size: .78rem; color: var(--muted); }
   #log { color: var(--muted); font-size: .78rem; margin-top: .5rem;
          min-height: 1.2em; }
+  #backend { display: flex; flex-wrap: wrap; gap: .5rem; padding: .5rem 1rem;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+    font-size: .74rem; }
+  .gchip { border: 1px solid var(--line); border-radius: 4px;
+    padding: .2rem .5rem; display: flex; gap: .4rem; align-items: center; }
+  .gchip b { color: var(--ink); } .gchip .caps { color: var(--muted); }
+  .cap-on { color: var(--good); } .cap-off { color: var(--muted); opacity: .5; }
 </style>
 </head>
 <body>
@@ -113,6 +120,7 @@
   <button id="btn-stop" disabled>Stop</button>
   <span id="state">idle</span>
 </header>
+<div id="backend" title="fab-card-id backend data readiness"></div>
 
 <main>
   <section>
@@ -127,6 +135,14 @@
       <div id="id-name">—</div>
       <div id="id-line"></div>
       <div id="decision"></div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <h2>Test a single card</h2>
+      <p style="color:var(--muted);font-size:.82rem;margin:.1rem 0 .5rem">
+        Identify one image without running a sort — for testing + timing.</p>
+      <input type="file" id="test-file" accept="image/*"
+        style="font-size:.8rem;width:100%">
+      <div id="test-result" style="margin-top:.5rem;font-size:.85rem"></div>
     </div>
     <div class="card" style="margin-top:1rem">
       <h2>History</h2>
@@ -275,6 +291,49 @@ const badges = m => {
   return `<span class="badge ${cls}">${mName}</span>` +
     `<span class="b-${m.confidence}">${m.confidence}</span>` +
     ` <span class="mono">${m.detail || ""} · ${m.ms} ms</span>`;
+};
+
+// ── backend readiness ───────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const st = await (await fetch("/api/status")).json();
+    if (!st.ok) { $("backend").textContent = "backend: " + (st.error||"?"); return; }
+    $("backend").innerHTML = "<span style='color:var(--muted)'>backend @ " +
+      st.card_data_root + "</span>" +
+      Object.entries(st.games).map(([g, i]) => {
+        const img = i.image_fast_path
+          ? `<span class='cap-on'>image${i.orb?"+ORB":""}</span>` : "<span class='cap-off'>image</span>";
+        const ocr = i.ocr_path ? "<span class='cap-on'>OCR</span>" : "<span class='cap-off'>OCR</span>";
+        return `<span class='gchip'><b>${g}</b> ${i.index.toLocaleString()} cards` +
+          `<span class='caps'>${img} ${ocr}</span></span>`;
+      }).join("");
+  } catch (e) { $("backend").textContent = "backend unavailable"; }
+}
+loadStatus();
+
+// ── single-card test identify ───────────────────────────────────────────
+$("test-file").onchange = async () => {
+  const f = $("test-file").files[0];
+  if (!f) return;
+  $("test-result").innerHTML = "<span style='color:var(--muted)'>identifying…</span>";
+  const b64 = await new Promise(res => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.readAsDataURL(f);
+  });
+  const r = await (await fetch("/api/test_identify", {method: "POST",
+    body: JSON.stringify({game: $("game").value, accuracy: $("accuracy").value,
+      jpeg_b64: b64, detect: true})})).json();
+  if (!r.ok) { $("test-result").textContent = r.error || "error"; return; }
+  if (!r.found) {
+    $("test-result").innerHTML = `<span class='b-none'>no match</span> ` +
+      `<span class='mono'>${r.client_ms} ms</span>`;
+    return;
+  }
+  $("test-result").innerHTML =
+    `<b>${r.name}</b> <span class='mono'>${(r.set||"").toUpperCase()} ${r.collector}</span><br>` +
+    `${r.rarity||"?"} · ${r.type_line||"?"} · ` + badges(r) +
+    `<br><span class='mono' style='color:var(--muted)'>round-trip ${r.client_ms} ms</span>`;
 };
 
 const es = new EventSource("/events");

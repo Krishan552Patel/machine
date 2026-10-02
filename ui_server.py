@@ -306,6 +306,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif url.path == "/api/status":
+            # Backend readiness per game — spawns a throwaway client that only
+            # reads the filesystem (no index load), then exits.
+            try:
+                c = IdentClient()
+                st = c._rpc({"cmd": "status"})
+                c.close()
+            except Exception as e:
+                st = {"ok": False, "error": str(e)}
+            self._json(st)
         elif url.path == "/events":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -365,8 +375,39 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     SESSION.pause_flag.clear()
             self._json({"ok": True})
+        elif self.path == "/api/test_identify":
+            # One-off identify for testing/calibration — reuses a cached
+            # client, re-initialising only when the game/mode changes.
+            self._json(test_identify(cfg))
         else:
             self.send_error(404)
+
+
+# ── Single-card test identify (cached client) ─────────────────────────────────
+_TEST = {"client": None, "game": None, "mode": None}
+_TEST_LOCK = threading.Lock()
+
+
+def test_identify(cfg: dict) -> dict:
+    game = cfg.get("game", "riftbound")
+    mode = cfg.get("accuracy", "auto")
+    jpeg_b64 = cfg.get("jpeg_b64", "")
+    if not jpeg_b64:
+        return {"ok": False, "error": "no image"}
+    with _TEST_LOCK:
+        if (_TEST["client"] is None or _TEST["game"] != game
+                or _TEST["mode"] != mode):
+            if _TEST["client"]:
+                _TEST["client"].close()
+            _TEST["client"] = IdentClient()
+            r = _TEST["client"].init(game, mode=mode)
+            if not r.get("ok"):
+                return r
+            _TEST["game"], _TEST["mode"] = game, mode
+        t0 = time.time()
+        res = _TEST["client"].identify_jpeg(jpeg_b64, detect=bool(cfg.get("detect", True)))
+        res["client_ms"] = round((time.time() - t0) * 1000)
+        return res
 
 
 def main():
