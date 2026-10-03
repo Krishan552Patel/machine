@@ -2,6 +2,16 @@
 
 CoreXY gantry simulation and card sorting system for Flesh and Blood trading cards. Simulates stepper motor movement, grid cell assignment, and card identification via pluggable sorter strategies.
 
+> **Web control panel:** `python ui_server.py` (or `run.py` → option 1), then
+> open <http://127.0.0.1:8765> — live multi-game identify + sort by rarity,
+> type, or **price**, backed by `fab-card-id`.
+>
+> **Price sorting note:** the web UI's "Price" mode reads prices that
+> `fab-card-id/build_prices.py` caches from Price-compare's Oracle DB. That
+> build step must run on the machine with Oracle wallet + credentials — see
+> fab-card-id's README > Prices. On a dev PC without Oracle, price mode uses
+> whatever `prices.json` exists (sample/none).
+
 ---
 
 ## How it works
